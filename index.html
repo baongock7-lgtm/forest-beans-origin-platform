@@ -6,14 +6,42 @@
   <title>Forest Beans Origin Platform</title>
   <meta name="theme-color" content="#0f3b2e" />
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root{--green:#0f3b2e;--green2:#174d3d;--cream:#f5eedc;--paper:#fffaf0;--muted:#6c6a5f;--line:#ded2b7;--ink:#20251f;--ok:#2f7d4f;--warn:#b7791f;--bad:#a13b2f;--shadow:0 14px 36px rgba(17,32,22,.09)}
     *{box-sizing:border-box}body{margin:0;background:var(--cream);color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}.app{min-height:100vh;display:grid;grid-template-columns:280px 1fr}.side{background:var(--green);color:var(--cream);padding:22px;position:sticky;top:0;height:100vh;overflow:auto}.brand{display:flex;gap:12px;align-items:center;margin-bottom:28px}.logo{width:48px;height:48px;border-radius:16px;background:var(--cream);color:var(--green);display:grid;place-items:center;font-size:29px;font-weight:900}.brand h1{font-size:19px;line-height:1.1;margin:0}.brand p{margin:5px 0 0;color:#e8dfc3;font-size:12px}.nav button{width:100%;text-align:left;margin:5px 0;background:transparent;border:1px solid rgba(255,255,255,.14);color:var(--cream);border-radius:15px;padding:12px 13px;font-weight:800;cursor:pointer}.nav button.active{background:#f5eedc;color:var(--green)}.lang{display:flex;gap:8px;margin:18px 0}.lang button{flex:1;border:1px solid rgba(255,255,255,.25);background:transparent;color:var(--cream);border-radius:999px;padding:9px;font-weight:800;cursor:pointer}.lang button.active{background:var(--cream);color:var(--green)}.side-note{margin-top:18px;color:#e8dfc3;font-size:12px;line-height:1.55}.main{padding:24px;max-width:1280px;width:100%;margin:0 auto}.top{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;margin-bottom:18px}.top h2{margin:0;color:var(--green);font-size:30px}.top p{margin:6px 0 0;color:var(--muted);line-height:1.5}.actions{display:flex;gap:9px;flex-wrap:wrap}.btn{border:0;border-radius:999px;padding:11px 15px;font-weight:900;cursor:pointer;background:var(--green);color:var(--cream)}.btn.secondary{background:#e4d7b9;color:var(--green)}.btn.ghost{background:transparent;border:1px solid var(--green);color:var(--green)}.btn.bad{background:var(--bad)}.btn.small{padding:7px 10px;font-size:12px}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}.stat{background:var(--paper);border:1px solid var(--line);border-radius:22px;padding:17px;box-shadow:var(--shadow)}.stat span{color:var(--muted);font-size:13px}.stat b{display:block;margin-top:9px;color:var(--green);font-size:28px}.panel{background:var(--paper);border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);overflow:hidden}.panel h3{margin:0;padding:18px 18px 4px;color:var(--green)}.panel .help{margin:0;padding:0 18px 15px;color:var(--muted);font-size:13px}.grid{display:grid;grid-template-columns:410px 1fr;gap:18px}.farm-list{padding:0 14px 14px}.farm-item{width:100%;background:#fffdf7;border:1px solid var(--line);border-radius:18px;margin:10px 0;padding:13px;text-align:left;cursor:pointer}.farm-item.active{outline:3px solid rgba(15,59,46,.16);border-color:var(--green)}.farm-item b{display:block;color:var(--green)}.farm-item span{color:var(--muted);font-size:13px}.form{padding:0 18px 18px}.section{border-top:1px solid var(--line);margin-top:14px;padding-top:14px}.section-title{font-weight:900;color:var(--green);margin-bottom:10px}label{display:block;font-size:12px;font-weight:800;color:#4d574e;margin:10px 0 5px}input,textarea,select{width:100%;border:1px solid #cfc3a8;border-radius:13px;background:#fffdf7;padding:10px 11px;font:inherit;font-size:14px;color:var(--ink)}textarea{min-height:80px;resize:vertical}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.passport{padding:24px}.pass-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;border-bottom:1px solid var(--line);padding-bottom:17px}.tag{display:inline-block;background:#e5efdf;color:var(--green);border-radius:999px;padding:6px 11px;font-size:12px;font-weight:900}.pass-title{font-size:32px;line-height:1.05;margin:11px 0 7px;color:var(--green)}.meta{color:var(--muted);font-size:14px}.id-card{min-width:116px;min-height:116px;border:1px solid var(--line);border-radius:16px;background:white;display:grid;place-items:center;text-align:center;padding:10px;flex:0 0 auto}.id-card b{color:var(--green)}.passport-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}.box{border:1px solid var(--line);border-radius:19px;padding:15px;background:#fffdf7}.box h4{margin:0 0 11px;color:var(--green);font-size:15px}.kv{display:grid;grid-template-columns:140px 1fr;gap:8px;font-size:14px;margin:8px 0}.k{color:var(--muted)}.photo{height:156px;background:linear-gradient(135deg,#d9dfc5,#f5ead0);border:1px dashed #b9aa89;border-radius:18px;display:grid;place-items:center;text-align:center;color:#74684f;padding:12px}.timeline{display:flex;gap:8px;flex-wrap:wrap}.timeline span{padding:8px 10px;border-radius:12px;background:#efe5ca;font-weight:850;font-size:13px}.status{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.pill{border-radius:15px;padding:11px;background:#eef6ec;border:1px solid #c9dfc2}.pill b{display:block;color:var(--ok);font-size:13px}.pill span{font-size:12px;color:var(--muted)}.pill.warn{background:#fff4df;border-color:#e7c27b}.pill.warn b{color:var(--warn)}.note{font-size:13px;color:var(--muted);line-height:1.55}.hidden{display:none!important}.table-wrap{padding:0 18px 18px;overflow:auto}.table{width:100%;border-collapse:collapse}.table th,.table td{padding:13px;border-bottom:1px solid var(--line);text-align:left;font-size:14px;vertical-align:top}.table th{color:var(--green)}.empty{padding:28px;text-align:center;color:var(--muted)}.notice{margin:0 18px 18px;padding:12px 14px;background:#fff4df;border:1px solid #e7c27b;border-radius:15px;color:#755214;font-size:13px}.modal{position:fixed;inset:0;background:rgba(14,34,26,.58);z-index:50;display:none;align-items:center;justify-content:center;padding:16px}.modal.open{display:flex}.modal-card{width:min(780px,100%);max-height:92vh;overflow:auto}.modal-head{display:flex;justify-content:space-between;align-items:center;padding:18px;border-bottom:1px solid var(--line)}.modal-head h3{padding:0}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.searchbar{padding:0 18px 14px;display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px}
+
+    .login-screen{min-height:100vh;display:grid;place-items:center;padding:24px;background:var(--cream)}
+    .login-card{width:min(430px,100%);background:var(--paper);border:1px solid var(--line);border-radius:26px;padding:28px;box-shadow:var(--shadow)}
+    .login-card .logo{margin:0 auto 18px}
+    .login-card h2{margin:0 0 8px;color:var(--green);text-align:center}
+    .login-card p{color:var(--muted);text-align:center;line-height:1.5}
+    .login-card .btn{width:100%;margin-top:16px}
+    .auth-error{color:var(--bad)!important;text-align:left!important;font-size:13px;min-height:20px}
+    .auth-meta{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);text-align:center}
+    .user-chip{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:999px;background:var(--paper);color:var(--green);font-size:12px;font-weight:800}
+
     @media(max-width:980px){.app{grid-template-columns:1fr}.side{position:relative;height:auto}.grid,.cards{grid-template-columns:1fr}.passport-grid{grid-template-columns:1fr}.status{grid-template-columns:1fr 1fr}.row,.searchbar{grid-template-columns:1fr}.top{flex-direction:column}.pass-head{flex-direction:column}.id-card{width:100%;min-height:90px}}
     @media print{.side,.top,.editor,.farm-directory,.actions,.no-print{display:none!important}.app{display:block}.main{padding:0}.panel{box-shadow:none;border:0}.passport{padding:10mm}.passport-grid{grid-template-columns:1fr 1fr}.status{grid-template-columns:repeat(4,1fr)}body{background:white}.photo{height:110px}}
   </style>
 </head>
 <body>
+<div id="loginScreen" class="login-screen">
+  <div class="login-card">
+    <div class="logo">C</div>
+    <h2>Forest Beans Origin Platform</h2>
+    <p>Đăng nhập để truy cập dữ liệu truy xuất nguồn gốc.</p>
+    <label>Email</label>
+    <input id="loginEmail" type="email" autocomplete="email" placeholder="you@example.com">
+    <label>Mật khẩu</label>
+    <input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••">
+    <button class="btn" type="button" onclick="signIn()">Đăng nhập</button>
+    <p id="loginError" class="auth-error"></p>
+    <div class="auth-meta">Supabase Auth · Email & Password</div>
+  </div>
+</div>
+
+<div id="mainApp" class="hidden">
 <div class="app">
   <aside class="side">
     <div class="brand"><div class="logo">C</div><div><h1>Forest Beans<br>Origin Platform</h1><p data-i="tagline">Farm traceability system</p></div></div>
@@ -30,7 +58,7 @@
 
   <main class="main">
     <section id="dashboardTab">
-      <div class="top"><div><h2 data-i="dashTitle">Dashboard nông hộ</h2><p data-i="dashDesc">Theo dõi hồ sơ, polygon, CVA và lô cà phê.</p></div><div class="actions"><button class="btn" onclick="openFarmModal()" data-i="addFarm">+ Thêm nông hộ</button><button class="btn secondary" onclick="downloadFullJSON()" data-i="backup">Backup JSON</button></div></div>
+      <div class="top"><div><h2 data-i="dashTitle">Dashboard nông hộ</h2><p data-i="dashDesc">Theo dõi hồ sơ, polygon, CVA và lô cà phê.</p></div><div class="actions"><div class="user-chip"><span id="currentUserEmail">—</span></div><button class="btn" onclick="openFarmModal()" data-i="addFarm">+ Thêm nông hộ</button><button class="btn secondary" onclick="downloadFullJSON()" data-i="backup">Backup JSON</button><button class="btn ghost" onclick="signOut()">Đăng xuất</button></div></div>
       <div class="cards">
         <div class="stat"><span data-i="farmCount">Số nông hộ</span><b id="statFarms">0</b></div>
         <div class="stat"><span data-i="polygonDone">Đã có polygon</span><b id="statPolygon">0/0</b></div>
@@ -75,9 +103,18 @@
   </main>
 </div>
 
+</div>
+
 <div id="modal" class="modal"><div class="panel modal-card"><div class="modal-head"><h3 id="modalTitle"></h3><button class="btn ghost small" onclick="closeModal()">×</button></div><form id="modalForm" class="form"><div id="modalBody"></div><div class="modal-actions"><button type="button" class="btn ghost" onclick="closeModal()">Hủy</button><button class="btn">Lưu</button></div></form></div></div>
 
 <script>
+const SUPABASE_URL = "https://kbqjctucdsvgdlpvjnik.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_cM4PT87GuUYe42qlKbI3TA_p1svKAEh";
+const supabaseClient = supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY
+);
+
 const STORE='forestBeansOriginProductionV1';
 const emptyDB={farms:[],harvestLots:[],processingLots:[]};
 let db=loadDB(),lang='vi',currentFarmId=db.farms[0]?.farmId||'';
@@ -119,7 +156,72 @@ function resetDatabase(){if(!confirm('Delete all local data?'))return;db=JSON.pa
 function importExcel(){if(typeof XLSX==='undefined')return alert('Excel library not loaded. Check your Internet connection.');const f=document.getElementById('excelFile').files[0];if(!f)return alert('Select Excel');const r=new FileReader();r.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'array'}),get=n=>XLSX.utils.sheet_to_json(wb.Sheets[n]||{}, {defval:''});const fields=['farmId','farmerId','farmer','village','province','area','altitude','variety','year','gps','polygon','shade','soil','herbicide','ripe','deforestation','risk','verify','cvaScore','cuppingDate','evaluator','flavorNotes','cuppingNotes'];get('Farmers').forEach(row=>{if(!row.farmId)return;const d={};fields.forEach(k=>d[k]=row[k]??'');const x=db.farms.find(f=>f.farmId===d.farmId);if(x)Object.assign(x,d);else db.farms.push(d)});get('HarvestLots').forEach(row=>{if(!row.id)return;row.cherryKg=+row.cherryKg||0;const x=db.harvestLots.find(l=>l.id===row.id);if(x)Object.assign(x,row);else db.harvestLots.push(row)});get('ProcessingLots').forEach(row=>{if(!row.id)return;row.inputKg=+row.inputKg||0;row.outputKg=+row.outputKg||0;row.sourceLotIds=String(row.sourceLotIds||'').split(',').map(s=>s.trim()).filter(Boolean);const x=db.processingLots.find(l=>l.id===row.id);if(x)Object.assign(x,row);else db.processingLots.push(row)});currentFarmId=db.farms[0]?.farmId||currentFarmId;saveDB();renderAll();alert('Import completed')}catch(err){alert('Import error: '+err.message)}};r.readAsArrayBuffer(f)}
 function downloadExcelTemplate(){if(typeof XLSX==='undefined')return alert('Excel library not loaded.');const rows={Farmers:[{farmId:'HR-DN-100',farmerId:'F-DN-100',farmer:'Farmer Name',village:'Đạ Nghịt, Lạc Dương',province:'Lâm Đồng, Vietnam',area:'1.00 ha',altitude:'1,550 m asl',variety:'Arabica Catimor',year:'2015',gps:'12.000000, 108.000000',polygon:'Polygon recorded / GeoJSON',shade:'Avocado, persimmon, banana and native shade trees',soil:'Composted manure, ground cover maintained',herbicide:'No herbicide',ripe:'95–100%',deforestation:'No evidence detected',risk:'Low',verify:'Satellite check and land-use history verified',cvaScore:84.50,cuppingDate:'2026-06-20',evaluator:'Internal QC',flavorNotes:'Caramel, citrus, stone fruit',cuppingNotes:'Clean cup, balanced sweetness and bright acidity'}],HarvestLots:[{id:'HL-100',farmId:'HR-DN-100',harvestDate:'2026-12-15',process:'Ripe cherry',cherryKg:1000,status:'collected'}],ProcessingLots:[{id:'PL-100',sourceLotIds:'HL-100',process:'Washed',inputKg:1000,outputKg:180,status:'review'}],Instructions:[{Sheet:'Farmers',Notes:'farmId is required. Contains all Farm Passport, GPS, practices, EUDR and CVA fields.'},{Sheet:'HarvestLots',Notes:'id and farmId required.'},{Sheet:'ProcessingLots',Notes:'Separate multiple sourceLotIds with commas.'}]};const wb=XLSX.utils.book_new();Object.entries(rows).forEach(([n,v])=>XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(v),n));XLSX.writeFile(wb,'forest-beans-farm-passport-import-template.xlsx')}
 
-setLang('vi');
+
+async function signIn(){
+  const email=document.getElementById('loginEmail').value.trim();
+  const password=document.getElementById('loginPassword').value;
+  const errorBox=document.getElementById('loginError');
+  errorBox.textContent='';
+  if(!email||!password){errorBox.textContent='Vui lòng nhập email và mật khẩu.';return}
+  try{
+    const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
+    if(error)throw error;
+    await showAuthenticatedApp(data.user);
+  }catch(err){
+    console.error(err);
+    errorBox.textContent=err.message||'Không thể đăng nhập.';
+  }
+}
+
+async function signOut(){
+  try{
+    const {error}=await supabaseClient.auth.signOut();
+    if(error)throw error;
+  }catch(err){
+    console.error(err);
+  }finally{
+    document.getElementById('mainApp').classList.add('hidden');
+    document.getElementById('loginScreen').classList.remove('hidden');
+    document.getElementById('loginPassword').value='';
+    document.getElementById('currentUserEmail').textContent='—';
+  }
+}
+
+async function showAuthenticatedApp(user){
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('mainApp').classList.remove('hidden');
+  document.getElementById('currentUserEmail').textContent=user?.email||'Signed in';
+  setLang('vi');
+}
+
+async function initializeAuth(){
+  try{
+    const {data,error}=await supabaseClient.auth.getSession();
+    if(error)throw error;
+    if(data.session?.user){
+      await showAuthenticatedApp(data.session.user);
+    }else{
+      document.getElementById('loginScreen').classList.remove('hidden');
+      document.getElementById('mainApp').classList.add('hidden');
+    }
+    supabaseClient.auth.onAuthStateChange((_event,session)=>{
+      if(session?.user){
+        showAuthenticatedApp(session.user);
+      }else{
+        document.getElementById('mainApp').classList.add('hidden');
+        document.getElementById('loginScreen').classList.remove('hidden');
+      }
+    });
+  }catch(err){
+    console.error(err);
+    document.getElementById('loginError').textContent='Không thể kết nối Supabase: '+(err.message||err);
+  }
+}
+
+document.getElementById('loginPassword').addEventListener('keydown',e=>{
+  if(e.key==='Enter')signIn();
+});
+initializeAuth();
 </script>
 </body>
 </html>
