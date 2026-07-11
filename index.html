@@ -25,9 +25,14 @@
     .sync-chip.ok{color:var(--ok)}.sync-chip.ok .sync-dot{background:var(--ok)}
     .sync-chip.error{color:var(--bad)}.sync-chip.error .sync-dot{background:var(--bad)}
 
+
+    .passport-selector{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
+    .passport-selector label{margin:0 0 5px}
+    .passport-selector select{min-width:280px}
+
     .user-chip{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:999px;background:var(--paper);color:var(--green);font-size:12px;font-weight:800}
 
-    @media(max-width:980px){.app{grid-template-columns:1fr}.side{position:relative;height:auto}.grid,.cards{grid-template-columns:1fr}.passport-grid{grid-template-columns:1fr}.status{grid-template-columns:1fr 1fr}.row,.searchbar{grid-template-columns:1fr}.top{flex-direction:column}.pass-head{flex-direction:column}.id-card{width:100%;min-height:90px}}
+    @media(max-width:980px){.passport-selector,.passport-selector>div{width:100%}.passport-selector select{min-width:0;width:100%}.app{grid-template-columns:1fr}.side{position:relative;height:auto}.grid,.cards{grid-template-columns:1fr}.passport-grid{grid-template-columns:1fr}.status{grid-template-columns:1fr 1fr}.row,.searchbar{grid-template-columns:1fr}.top{flex-direction:column}.pass-head{flex-direction:column}.id-card{width:100%;min-height:90px}}
     @media print{.side,.top,.editor,.farm-directory,.actions,.no-print{display:none!important}.app{display:block}.main{padding:0}.panel{box-shadow:none;border:0}.passport{padding:10mm}.passport-grid{grid-template-columns:1fr 1fr}.status{grid-template-columns:repeat(4,1fr)}body{background:white}.photo{height:110px}}
   </style>
 </head>
@@ -83,7 +88,19 @@
     </section>
 
     <section id="passportTab" class="hidden">
-      <div class="top"><div><h2 data-i="passportTitle">Farm Passport song ngữ</h2><p data-i="passportDesc">Dữ liệu được lưu tự động khi chỉnh sửa.</p></div><div class="actions"><button class="btn" onclick="window.print()" data-i="printBtn">In / Xuất PDF</button><button class="btn secondary" onclick="openFarmModal(currentFarmId)" data-i="editFarm">Sửa thông tin</button><button class="btn bad" onclick="deleteCurrentFarm()" data-i="deleteFarm">Xóa nông hộ</button></div></div>
+      <div class="top">
+        <div>
+          <h2 data-i="passportTitle">Farm Passport song ngữ</h2>
+          <p data-i="passportDesc">Dữ liệu được lưu tự động khi chỉnh sửa.</p>
+          <div class="passport-selector no-print" style="margin-top:14px">
+            <div>
+              <label for="passportFarmSelect">Chọn nông hộ / Select farmer</label>
+              <select id="passportFarmSelect" onchange="selectFarmFromPassport(this.value)"></select>
+            </div>
+          </div>
+        </div>
+        <div class="actions"><button class="btn" onclick="window.print()" data-i="printBtn">In / Xuất PDF</button><button class="btn secondary" onclick="openFarmModal(currentFarmId)" data-i="editFarm">Sửa thông tin</button><button class="btn bad" onclick="deleteCurrentFarm()" data-i="deleteFarm">Xóa nông hộ</button></div>
+      </div>
       <div class="grid"><section class="panel editor"><h3 data-i="editData">Nhập dữ liệu</h3><p class="help data-i" data-i="editHelp">Chỉnh sửa trực tiếp và lưu tự động.</p><form class="form" id="farmForm"></form></section><section class="panel"><article class="passport" id="passport"></article></section></div>
     </section>
 
@@ -241,6 +258,18 @@ function setLang(l){lang=l;document.documentElement.lang=l;document.getElementBy
 function showTab(id,btn){['dashboard','passport','lots','eudr','data'].forEach(t=>document.getElementById(t+'Tab').classList.toggle('hidden',t!==id));document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderAll()}
 function currentFarm(){return db.farms.find(f=>f.farmId===currentFarmId)||null}
 function selectFarm(id){currentFarmId=id;renderAll()}
+function selectFarmFromPassport(id){currentFarmId=id;renderForm();renderPassports();renderEudr();renderPassportSelector()}
+function renderPassportSelector(){
+  const select=document.getElementById('passportFarmSelect');
+  if(!select)return;
+  if(!db.farms.length){
+    select.innerHTML=`<option value="">${lang==='vi'?'Chưa có nông hộ':'No farmers available'}</option>`;
+    select.disabled=true;
+    return;
+  }
+  select.disabled=false;
+  select.innerHTML=db.farms.map(f=>`<option value="${esc(f.farmId)}" ${f.farmId===currentFarmId?'selected':''}>${esc(f.farmer||f.farmId)} · ${esc(f.farmId)}</option>`).join('');
+}
 function isPolygonRecorded(f){return !!String(f?.polygon||'').trim()&&!/need|pending|chưa/i.test(String(f.polygon))}
 function farmCard(f){return `<button class="farm-item ${f.farmId===currentFarmId?'active':''}" onclick="selectFarm('${esc(f.farmId)}')"><b>${esc(f.farmer||f.farmId)}</b><span>${esc(f.farmId)} · ${esc(f.village||'')}</span><br><span>${tr('risk')}: ${esc(f.risk||'-')} · CVA ${esc(f.cvaScore||'-')}</span></button>`}
 function renderFarmList(){const q=(document.getElementById('farmSearch')?.value||'').toLowerCase(),risk=document.getElementById('riskFilter')?.value||'',poly=document.getElementById('polygonFilter')?.value||'';const rows=db.farms.filter(f=>{if(q&&!`${f.farmer} ${f.farmId} ${f.village}`.toLowerCase().includes(q))return false;if(risk&&f.risk!==risk)return false;if(poly==='recorded'&&!isPolygonRecorded(f))return false;if(poly==='pending'&&isPolygonRecorded(f))return false;return true});document.getElementById('farmList').innerHTML=rows.length?rows.map(farmCard).join(''):`<div class="empty">${lang==='vi'?'Chưa có nông hộ. Bấm “Thêm nông hộ” để bắt đầu.':'No farmers yet. Click “Add farmer” to begin.'}</div>`}
@@ -250,7 +279,7 @@ function renderPassports(){const f=currentFarm();document.getElementById('quickP
 function renderStats(){document.getElementById('statFarms').textContent=db.farms.length;document.getElementById('statPolygon').textContent=`${db.farms.filter(isPolygonRecorded).length}/${db.farms.length}`;document.getElementById('statRisk').textContent=db.farms.filter(f=>f.risk==='Low').length;document.getElementById('statLots').textContent=db.harvestLots.length+db.processingLots.length}
 function renderLots(){document.getElementById('harvestRows').innerHTML=db.harvestLots.map(l=>`<tr><td><b>${esc(l.id)}</b></td><td>${esc(l.farmId)}</td><td>${esc(l.harvestDate)}</td><td>${esc(l.process)}</td><td>${esc(l.cherryKg)}</td><td>${esc(l.status)}</td><td><button class="btn ghost small" onclick="openHarvestModal('${esc(l.id)}')">Edit</button> <button class="btn bad small" onclick="deleteHarvest('${esc(l.id)}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="7" class="empty">No harvest lots</td></tr>';document.getElementById('processingRows').innerHTML=db.processingLots.map(l=>`<tr><td><b>${esc(l.id)}</b></td><td>${esc((l.sourceLotIds||[]).join(', '))}</td><td>${esc(l.process)}</td><td>${esc(l.inputKg)}</td><td>${esc(l.outputKg)}</td><td>${esc(l.status)}</td><td><button class="btn ghost small" onclick="openProcessingModal('${esc(l.id)}')">Edit</button> <button class="btn bad small" onclick="deleteProcessing('${esc(l.id)}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="7" class="empty">No processing lots</td></tr>'}
 function renderEudr(){const f=currentFarm();document.getElementById('eudrRows').innerHTML=f?[['GPS Polygon',isPolygonRecorded(f)?'Recorded':'Pending',f.polygon||''],['Deforestation screening',f.deforestation||'Pending',f.verify||''],['Supply chain traceability',db.harvestLots.some(l=>l.farmId===f.farmId)?'Linked':'Pending',`${f.farmId} → ${db.harvestLots.filter(l=>l.farmId===f.farmId).map(l=>l.id).join(', ')||'-'}`],['Cupping & CVA',f.cvaScore?'Recorded':'Pending',`${f.cvaScore||'-'} · ${f.cuppingDate||'-'}`]].map(r=>`<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td></tr>`).join(''):'<tr><td colspan="3" class="empty">No farm selected</td></tr>'}
-function renderAll(){renderStats();renderFarmList();renderForm();renderPassports();renderLots();renderEudr()}
+function renderAll(){renderStats();renderFarmList();renderPassportSelector();renderForm();renderPassports();renderLots();renderEudr()}
 
 function modal(title,body,submit){document.getElementById('modalTitle').textContent=title;document.getElementById('modalBody').innerHTML=body;document.getElementById('modal').classList.add('open');document.getElementById('modalForm').onsubmit=e=>{e.preventDefault();const d=Object.fromEntries(new FormData(e.currentTarget).entries());const ok=submit(d);if(ok===false)return;saveDB();closeModal();renderAll()}}
 function closeModal(){document.getElementById('modal').classList.remove('open')}
