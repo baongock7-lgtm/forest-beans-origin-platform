@@ -97,7 +97,23 @@ get('Farmers').forEach(row=>{if(!row.farmId)return;const clean={};farmFields.for
 get('HarvestLots').forEach(row=>{if(!row.id)return;row.cherryKg=+row.cherryKg||0;const existing=ext.harvestLots.find(x=>x.id===row.id);if(existing)Object.assign(existing,row);else ext.harvestLots.push(row)});
 get('ProcessingLots').forEach(row=>{if(!row.id)return;row.inputKg=+row.inputKg||0;row.outputKg=+row.outputKg||0;row.sourceLotIds=String(row.sourceLotIds||'').split(',').map(s=>s.trim()).filter(Boolean);const existing=ext.processingLots.find(x=>x.id===row.id);if(existing)Object.assign(existing,row);else ext.processingLots.push(row)});
 saveExt();current=farms[0]||current;localStorage.setItem('originPlatformCurrent',JSON.stringify(current));renderAll();renderExtended();alert('Import completed')}catch(err){console.error(err);alert('Import error: '+err.message)}};r.readAsArrayBuffer(f)}
-function downloadExcelTemplate(){const a=document.createElement('a');a.href='forest-beans-farm-passport-import-template.xlsx';a.download='forest-beans-farm-passport-import-template.xlsx';a.click()}
+function downloadExcelTemplate(){
+if(typeof XLSX==='undefined')return alert('Không tải được thư viện Excel. Hãy kiểm tra Internet.');
+const rows={
+Farmers:[{farmId:'HR-DN-100',farmerId:'F-DN-100',farmer:'Farmer Name',village:'Đạ Nghịt, Lạc Dương',province:'Lâm Đồng, Vietnam',area:'1.00 ha',altitude:'1,550 m asl',variety:'Arabica Catimor',year:'2015',gps:'12.000000, 108.000000',polygon:'Polygon recorded / GeoJSON',shade:'Avocado, persimmon, banana and native shade trees',soil:'Composted manure, ground cover maintained, reduced chemical input',herbicide:'No herbicide',ripe:'95–100%',lot:'LOT-100',process:'Washed',deforestation:'No evidence detected',risk:'Low',verify:'Satellite check and land-use history verified',cvaScore:84.50,cuppingDate:'2026-06-20',evaluator:'Internal QC',flavorNotes:'Caramel, citrus, stone fruit',cuppingNotes:'Clean cup, balanced sweetness and bright acidity'}],
+HarvestLots:[{id:'HL-100',farmId:'HR-DN-100',harvestDate:'2026-12-15',process:'Ripe cherry',cherryKg:1000,status:'collected'}],
+ProcessingLots:[{id:'PL-100',sourceLotIds:'HL-100',process:'Washed',inputKg:1000,outputKg:180,status:'review'}],
+Instructions:[
+{Sheet:'Farmers',Notes:'farmId is required. Includes all Farm Passport, practices, GPS, EUDR and CVA fields.'},
+{Sheet:'HarvestLots',Notes:'id and farmId required.'},
+{Sheet:'ProcessingLots',Notes:'Multiple sourceLotIds can be separated by commas.'},
+{Sheet:'Dates',Notes:'Use YYYY-MM-DD format.'},
+{Sheet:'CVA Score',Notes:'Use numeric value such as 84.50.'}
+]};
+const wb=XLSX.utils.book_new();
+Object.entries(rows).forEach(([name,data])=>XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(data),name));
+XLSX.writeFile(wb,'forest-beans-farm-passport-import-template.xlsx');
+}
 
 renderExtended();
 applyLang();
