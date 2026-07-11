@@ -19,6 +19,12 @@
     .login-card .btn{width:100%;margin-top:16px}
     .auth-error{color:var(--bad)!important;text-align:left!important;font-size:13px;min-height:20px}
     .auth-meta{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);text-align:center}
+
+    .sync-chip{display:flex;align-items:center;gap:7px;padding:8px 10px;border:1px solid var(--line);border-radius:999px;background:var(--paper);font-size:12px;font-weight:800;color:var(--muted)}
+    .sync-dot{width:8px;height:8px;border-radius:50%;background:var(--warn)}
+    .sync-chip.ok{color:var(--ok)}.sync-chip.ok .sync-dot{background:var(--ok)}
+    .sync-chip.error{color:var(--bad)}.sync-chip.error .sync-dot{background:var(--bad)}
+
     .user-chip{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:999px;background:var(--paper);color:var(--green);font-size:12px;font-weight:800}
 
     @media(max-width:980px){.app{grid-template-columns:1fr}.side{position:relative;height:auto}.grid,.cards{grid-template-columns:1fr}.passport-grid{grid-template-columns:1fr}.status{grid-template-columns:1fr 1fr}.row,.searchbar{grid-template-columns:1fr}.top{flex-direction:column}.pass-head{flex-direction:column}.id-card{width:100%;min-height:90px}}
@@ -58,7 +64,7 @@
 
   <main class="main">
     <section id="dashboardTab">
-      <div class="top"><div><h2 data-i="dashTitle">Dashboard nông hộ</h2><p data-i="dashDesc">Theo dõi hồ sơ, polygon, CVA và lô cà phê.</p></div><div class="actions"><div class="user-chip"><span id="currentUserEmail">—</span></div><button class="btn" onclick="openFarmModal()" data-i="addFarm">+ Thêm nông hộ</button><button class="btn secondary" onclick="downloadFullJSON()" data-i="backup">Backup JSON</button><button class="btn ghost" onclick="signOut()">Đăng xuất</button></div></div>
+      <div class="top"><div><h2 data-i="dashTitle">Dashboard nông hộ</h2><p data-i="dashDesc">Theo dõi hồ sơ, polygon, CVA và lô cà phê.</p></div><div class="actions"><div id="syncStatus" class="sync-chip"><span class="sync-dot"></span><span id="syncStatusText">Chưa đồng bộ</span></div><div class="user-chip"><span id="currentUserEmail">—</span></div><button class="btn" onclick="openFarmModal()" data-i="addFarm">+ Thêm nông hộ</button><button class="btn secondary" onclick="downloadFullJSON()" data-i="backup">Backup JSON</button><button class="btn secondary" onclick="saveOnlineDatabase()">Đồng bộ ngay</button><button class="btn ghost" onclick="signOut()">Đăng xuất</button></div></div>
       <div class="cards">
         <div class="stat"><span data-i="farmCount">Số nông hộ</span><b id="statFarms">0</b></div>
         <div class="stat"><span data-i="polygonDone">Đã có polygon</span><b id="statPolygon">0/0</b></div>
@@ -117,12 +123,62 @@ const supabaseClient = supabase.createClient(
 
 const STORE='forestBeansOriginProductionV1';
 const emptyDB={farms:[],harvestLots:[],processingLots:[]};
-let db=loadDB(),lang='vi',currentFarmId=db.farms[0]?.farmId||'';
+let db={farms:[],harvestLots:[],processingLots:[]},lang='vi',currentFarmId='',saveTimer=null,isOnlineReady=false;
 
 const T={vi:{tagline:'Hệ thống truy xuất nguồn gốc',navDashboard:'Dashboard',navPassport:'Farm Passport',navLots:'Lots & Traceability',navEudr:'EUDR Checklist',navData:'Import & Backup',sideNote:'Dữ liệu lưu tự động trong trình duyệt. Hãy backup JSON định kỳ.',dashTitle:'Dashboard nông hộ',dashDesc:'Theo dõi hồ sơ, polygon, CVA và lô cà phê.',addFarm:'+ Thêm nông hộ',backup:'Backup JSON',farmCount:'Số nông hộ',polygonDone:'Đã có polygon',lowRisk:'Rủi ro thấp',lotsThisSeason:'Lô hiện có',farmerList:'Danh sách nông hộ',farmerListHelp:'Chọn một nông hộ để xem Farm Passport.',quickView:'Tổng quan hồ sơ',passportTitle:'Farm Passport song ngữ',passportDesc:'Dữ liệu được lưu tự động khi chỉnh sửa.',printBtn:'In / Xuất PDF',editFarm:'Sửa thông tin',deleteFarm:'Xóa nông hộ',editData:'Nhập dữ liệu',editHelp:'Chỉnh sửa trực tiếp và lưu tự động.',lotsTitle:'Lots & Traceability',lotsDesc:'Quản lý Harvest Lot và Processing Lot.',eudrTitle:'EUDR Checklist',eudrDesc:'Checklist chuẩn bị nội bộ theo từng vườn.',eudrTableTitle:'Tình trạng chuẩn bị',field:'Hạng mục',status:'Trạng thái',noteCol:'Ghi chú',dataTitle:'Import & Backup',dataDesc:'Nhập dữ liệu Excel hoặc khôi phục từ JSON.',farmPassport:'Hồ sơ vườn',farmInfo:'Thông tin vườn',location:'Vị trí',ecosystem:'Hệ sinh thái & canh tác',trace:'Truy xuất lô hàng',eudrReady:'EUDR readiness',cupping:'Cupping & CVA',farmer:'Nông hộ',farmArea:'Diện tích',elevation:'Độ cao',variety:'Giống',year:'Năm tiếp quản',gps:'GPS Center',polygon:'GPS Polygon',shade:'Cây xen',soil:'Đất',herbicide:'Thuốc cỏ',ripe:'Hái chín',process:'Sơ chế',deforestation:'Phá rừng sau 31/12/2020',risk:'Mức rủi ro',verify:'Ghi chú xác minh',map:'Bản đồ / ảnh vườn',mapHelp:'Có thể thay bằng ảnh polygon hoặc bản đồ',checkDef:'Kiểm tra phá rừng',polyRecorded:'Tọa độ vườn',chainTrace:'Chuỗi cung ứng',publicReady:'Bản public',cvaScore:'Điểm CVA',cuppingDate:'Ngày cupping',evaluator:'Người đánh giá',flavorNotes:'Hương vị chính',cuppingNotes:'Ghi chú cupping'},en:{tagline:'Farm traceability system',navDashboard:'Dashboard',navPassport:'Farm Passport',navLots:'Lots & Traceability',navEudr:'EUDR Checklist',navData:'Import & Backup',sideNote:'Data is saved automatically in this browser. Back up JSON regularly.',dashTitle:'Farmer Dashboard',dashDesc:'Track farm profiles, polygons, CVA and coffee lots.',addFarm:'+ Add farmer',backup:'Backup JSON',farmCount:'Farmers',polygonDone:'Polygon recorded',lowRisk:'Low risk',lotsThisSeason:'Total lots',farmerList:'Farmer Directory',farmerListHelp:'Select a farmer to view the Farm Passport.',quickView:'Profile Overview',passportTitle:'Bilingual Farm Passport',passportDesc:'Data is saved automatically while editing.',printBtn:'Print / Export PDF',editFarm:'Edit information',deleteFarm:'Delete farmer',editData:'Edit Data',editHelp:'Edit directly and save automatically.',lotsTitle:'Lots & Traceability',lotsDesc:'Manage Harvest Lots and Processing Lots.',eudrTitle:'EUDR Checklist',eudrDesc:'Internal readiness checklist for each farm.',eudrTableTitle:'Readiness Status',field:'Field',status:'Status',noteCol:'Note',dataTitle:'Import & Backup',dataDesc:'Import Excel data or restore from JSON.',farmPassport:'Farm Passport',farmInfo:'Farm Information',location:'Location',ecosystem:'Ecosystem & Farming Practices',trace:'Lot Traceability',eudrReady:'EUDR readiness',cupping:'Cupping & CVA',farmer:'Farmer',farmArea:'Farm Area',elevation:'Elevation',variety:'Variety',year:'Year managed',gps:'GPS Center',polygon:'GPS Polygon',shade:'Shade / Intercrop Trees',soil:'Soil Management',herbicide:'Herbicide',ripe:'Ripe Picking',process:'Process',deforestation:'Deforestation after 31 Dec 2020',risk:'Risk Level',verify:'Verification Notes',map:'Map / Farm Photo',mapHelp:'Can be replaced with polygon image or map',checkDef:'Deforestation check',polyRecorded:'Farm boundary',chainTrace:'Supply chain',publicReady:'Public profile',cvaScore:'CVA Score',cuppingDate:'Cupping Date',evaluator:'Evaluator',flavorNotes:'Primary Flavor Notes',cuppingNotes:'Cupping Notes'}};
 
-function loadDB(){try{const x=JSON.parse(localStorage.getItem(STORE)||'null');return x&&Array.isArray(x.farms)?x:JSON.parse(JSON.stringify(emptyDB))}catch(e){return JSON.parse(JSON.stringify(emptyDB))}}
-function saveDB(){localStorage.setItem(STORE,JSON.stringify(db))}
+function loadLocalBackup(){try{const x=JSON.parse(localStorage.getItem(STORE)||'null');return x&&Array.isArray(x.farms)?x:JSON.parse(JSON.stringify(emptyDB))}catch(e){return JSON.parse(JSON.stringify(emptyDB))}}
+function normalizeDB(value){return {farms:Array.isArray(value?.farms)?value.farms:[],harvestLots:Array.isArray(value?.harvestLots)?value.harvestLots:[],processingLots:Array.isArray(value?.processingLots)?value.processingLots:[]}}
+function setSyncStatus(message,state=''){
+  const box=document.getElementById('syncStatus'),label=document.getElementById('syncStatusText');
+  if(!box||!label)return;
+  box.classList.remove('ok','error');
+  if(state)box.classList.add(state);
+  label.textContent=message;
+}
+async function getSignedInUser(){
+  const {data,error}=await supabaseClient.auth.getUser();
+  if(error)throw error;
+  return data.user;
+}
+async function loadOnlineDatabase(){
+  const user=await getSignedInUser();
+  if(!user)throw new Error('User is not signed in.');
+  setSyncStatus('Đang tải...');
+  const {data,error}=await supabaseClient.from('app_data').select('data').eq('user_id',user.id).maybeSingle();
+  if(error)throw error;
+  if(data?.data){
+    setSyncStatus('Đã đồng bộ','ok');
+    return normalizeDB(data.data);
+  }
+  const empty=normalizeDB(emptyDB);
+  const {error:insertError}=await supabaseClient.from('app_data').insert({user_id:user.id,data:empty});
+  if(insertError)throw insertError;
+  setSyncStatus('Đã tạo dữ liệu','ok');
+  return empty;
+}
+async function saveOnlineDatabase(){
+  if(!isOnlineReady)return;
+  try{
+    const user=await getSignedInUser();
+    if(!user)return;
+    setSyncStatus('Đang đồng bộ...');
+    const {error}=await supabaseClient.from('app_data').upsert(
+      {user_id:user.id,data:normalizeDB(db),updated_at:new Date().toISOString()},
+      {onConflict:'user_id'}
+    );
+    if(error)throw error;
+    setSyncStatus('Đã đồng bộ','ok');
+  }catch(err){
+    console.error(err);
+    setSyncStatus('Lỗi đồng bộ','error');
+  }
+}
+function saveDB(){
+  localStorage.setItem(STORE,JSON.stringify(db));
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(saveOnlineDatabase,700);
+}
 function tr(k){return T[lang][k]||k}
 function esc(v=''){return String(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function setLang(l){lang=l;document.documentElement.lang=l;document.getElementById('viBtn').classList.toggle('active',l==='vi');document.getElementById('enBtn').classList.toggle('active',l==='en');document.querySelectorAll('[data-i]').forEach(el=>el.textContent=tr(el.dataset.i));renderAll()}
@@ -151,7 +207,7 @@ function openProcessingModal(id=''){const x=db.processingLots.find(l=>l.id===id)
 function deleteProcessing(id){if(!confirm(`Delete ${id}?`))return;db.processingLots=db.processingLots.filter(l=>l.id!==id);saveDB();renderAll()}
 
 function downloadFullJSON(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(db,null,2)],{type:'application/json'}));a.download=`forest-beans-origin-backup-${new Date().toISOString().slice(0,10)}.json`;a.click()}
-function restoreJSON(){const f=document.getElementById('jsonFile').files[0];if(!f)return alert('Select JSON');const r=new FileReader();r.onload=()=>{try{const x=JSON.parse(r.result);if(!x||!Array.isArray(x.farms))throw new Error('Invalid database');if(!confirm('Replace current database?'))return;db=x;db.harvestLots=db.harvestLots||[];db.processingLots=db.processingLots||[];currentFarmId=db.farms[0]?.farmId||'';saveDB();renderAll()}catch(e){alert('Invalid JSON: '+e.message)}};r.readAsText(f)}
+function restoreJSON(){const f=document.getElementById('jsonFile').files[0];if(!f)return alert('Select JSON');const r=new FileReader();r.onload=()=>{try{const x=JSON.parse(r.result);if(!x||!Array.isArray(x.farms))throw new Error('Invalid database');if(!confirm('Replace current database?'))return;db=normalizeDB(x);currentFarmId=db.farms[0]?.farmId||'';saveDB();renderAll()}catch(e){alert('Invalid JSON: '+e.message)}};r.readAsText(f)}
 function resetDatabase(){if(!confirm('Delete all local data?'))return;db=JSON.parse(JSON.stringify(emptyDB));currentFarmId='';saveDB();renderAll()}
 function importExcel(){if(typeof XLSX==='undefined')return alert('Excel library not loaded. Check your Internet connection.');const f=document.getElementById('excelFile').files[0];if(!f)return alert('Select Excel');const r=new FileReader();r.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'array'}),get=n=>XLSX.utils.sheet_to_json(wb.Sheets[n]||{}, {defval:''});const fields=['farmId','farmerId','farmer','village','province','area','altitude','variety','year','gps','polygon','shade','soil','herbicide','ripe','deforestation','risk','verify','cvaScore','cuppingDate','evaluator','flavorNotes','cuppingNotes'];get('Farmers').forEach(row=>{if(!row.farmId)return;const d={};fields.forEach(k=>d[k]=row[k]??'');const x=db.farms.find(f=>f.farmId===d.farmId);if(x)Object.assign(x,d);else db.farms.push(d)});get('HarvestLots').forEach(row=>{if(!row.id)return;row.cherryKg=+row.cherryKg||0;const x=db.harvestLots.find(l=>l.id===row.id);if(x)Object.assign(x,row);else db.harvestLots.push(row)});get('ProcessingLots').forEach(row=>{if(!row.id)return;row.inputKg=+row.inputKg||0;row.outputKg=+row.outputKg||0;row.sourceLotIds=String(row.sourceLotIds||'').split(',').map(s=>s.trim()).filter(Boolean);const x=db.processingLots.find(l=>l.id===row.id);if(x)Object.assign(x,row);else db.processingLots.push(row)});currentFarmId=db.farms[0]?.farmId||currentFarmId;saveDB();renderAll();alert('Import completed')}catch(err){alert('Import error: '+err.message)}};r.readAsArrayBuffer(f)}
 function downloadExcelTemplate(){if(typeof XLSX==='undefined')return alert('Excel library not loaded.');const rows={Farmers:[{farmId:'HR-DN-100',farmerId:'F-DN-100',farmer:'Farmer Name',village:'Đạ Nghịt, Lạc Dương',province:'Lâm Đồng, Vietnam',area:'1.00 ha',altitude:'1,550 m asl',variety:'Arabica Catimor',year:'2015',gps:'12.000000, 108.000000',polygon:'Polygon recorded / GeoJSON',shade:'Avocado, persimmon, banana and native shade trees',soil:'Composted manure, ground cover maintained',herbicide:'No herbicide',ripe:'95–100%',deforestation:'No evidence detected',risk:'Low',verify:'Satellite check and land-use history verified',cvaScore:84.50,cuppingDate:'2026-06-20',evaluator:'Internal QC',flavorNotes:'Caramel, citrus, stone fruit',cuppingNotes:'Clean cup, balanced sweetness and bright acidity'}],HarvestLots:[{id:'HL-100',farmId:'HR-DN-100',harvestDate:'2026-12-15',process:'Ripe cherry',cherryKg:1000,status:'collected'}],ProcessingLots:[{id:'PL-100',sourceLotIds:'HL-100',process:'Washed',inputKg:1000,outputKg:180,status:'review'}],Instructions:[{Sheet:'Farmers',Notes:'farmId is required. Contains all Farm Passport, GPS, practices, EUDR and CVA fields.'},{Sheet:'HarvestLots',Notes:'id and farmId required.'},{Sheet:'ProcessingLots',Notes:'Separate multiple sourceLotIds with commas.'}]};const wb=XLSX.utils.book_new();Object.entries(rows).forEach(([n,v])=>XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(v),n));XLSX.writeFile(wb,'forest-beans-farm-passport-import-template.xlsx')}
@@ -184,6 +240,8 @@ async function signOut(){
     document.getElementById('loginScreen').classList.remove('hidden');
     document.getElementById('loginPassword').value='';
     document.getElementById('currentUserEmail').textContent='—';
+    isOnlineReady=false;
+    setSyncStatus('Chưa đồng bộ');
   }
 }
 
@@ -191,6 +249,18 @@ async function showAuthenticatedApp(user){
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('mainApp').classList.remove('hidden');
   document.getElementById('currentUserEmail').textContent=user?.email||'Signed in';
+  try{
+    db=await loadOnlineDatabase();
+    isOnlineReady=true;
+    localStorage.setItem(STORE,JSON.stringify(db));
+  }catch(err){
+    console.error(err);
+    db=loadLocalBackup();
+    isOnlineReady=false;
+    setSyncStatus('Dùng bản cục bộ','error');
+    alert('Không thể tải dữ liệu online. App đang dùng bản lưu cục bộ: '+(err.message||err));
+  }
+  currentFarmId=db.farms[0]?.farmId||'';
   setLang('vi');
 }
 
