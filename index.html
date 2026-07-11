@@ -43,7 +43,7 @@
     <input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••">
     <button class="btn" type="button" onclick="signIn()">Đăng nhập</button>
     <p id="loginError" class="auth-error"></p>
-    <div class="auth-meta">Supabase Auth · Email & Password</div>
+    <div class="auth-meta">Supabase Auth · Normalized Database</div>
   </div>
 </div>
 
@@ -123,7 +123,7 @@ const supabaseClient = supabase.createClient(
 
 const STORE='forestBeansOriginProductionV1';
 const emptyDB={farms:[],harvestLots:[],processingLots:[]};
-let db={farms:[],harvestLots:[],processingLots:[]},lang='vi',currentFarmId='',saveTimer=null,isOnlineReady=false;
+let db={farms:[],harvestLots:[],processingLots:[]},lang='vi',currentFarmId='',saveTimer=null,isOnlineReady=false,appStartPromise=null,activeUserId='';
 
 const T={vi:{tagline:'Hệ thống truy xuất nguồn gốc',navDashboard:'Dashboard',navPassport:'Farm Passport',navLots:'Lots & Traceability',navEudr:'EUDR Checklist',navData:'Import & Backup',sideNote:'Dữ liệu lưu tự động trong trình duyệt. Hãy backup JSON định kỳ.',dashTitle:'Dashboard nông hộ',dashDesc:'Theo dõi hồ sơ, polygon, CVA và lô cà phê.',addFarm:'+ Thêm nông hộ',backup:'Backup JSON',farmCount:'Số nông hộ',polygonDone:'Đã có polygon',lowRisk:'Rủi ro thấp',lotsThisSeason:'Lô hiện có',farmerList:'Danh sách nông hộ',farmerListHelp:'Chọn một nông hộ để xem Farm Passport.',quickView:'Tổng quan hồ sơ',passportTitle:'Farm Passport song ngữ',passportDesc:'Dữ liệu được lưu tự động khi chỉnh sửa.',printBtn:'In / Xuất PDF',editFarm:'Sửa thông tin',deleteFarm:'Xóa nông hộ',editData:'Nhập dữ liệu',editHelp:'Chỉnh sửa trực tiếp và lưu tự động.',lotsTitle:'Lots & Traceability',lotsDesc:'Quản lý Harvest Lot và Processing Lot.',eudrTitle:'EUDR Checklist',eudrDesc:'Checklist chuẩn bị nội bộ theo từng vườn.',eudrTableTitle:'Tình trạng chuẩn bị',field:'Hạng mục',status:'Trạng thái',noteCol:'Ghi chú',dataTitle:'Import & Backup',dataDesc:'Nhập dữ liệu Excel hoặc khôi phục từ JSON.',farmPassport:'Hồ sơ vườn',farmInfo:'Thông tin vườn',location:'Vị trí',ecosystem:'Hệ sinh thái & canh tác',trace:'Truy xuất lô hàng',eudrReady:'EUDR readiness',cupping:'Cupping & CVA',farmer:'Nông hộ',farmArea:'Diện tích',elevation:'Độ cao',variety:'Giống',year:'Năm tiếp quản',gps:'GPS Center',polygon:'GPS Polygon',shade:'Cây xen',soil:'Đất',herbicide:'Thuốc cỏ',ripe:'Hái chín',process:'Sơ chế',deforestation:'Phá rừng sau 31/12/2020',risk:'Mức rủi ro',verify:'Ghi chú xác minh',map:'Bản đồ / ảnh vườn',mapHelp:'Có thể thay bằng ảnh polygon hoặc bản đồ',checkDef:'Kiểm tra phá rừng',polyRecorded:'Tọa độ vườn',chainTrace:'Chuỗi cung ứng',publicReady:'Bản public',cvaScore:'Điểm CVA',cuppingDate:'Ngày cupping',evaluator:'Người đánh giá',flavorNotes:'Hương vị chính',cuppingNotes:'Ghi chú cupping'},en:{tagline:'Farm traceability system',navDashboard:'Dashboard',navPassport:'Farm Passport',navLots:'Lots & Traceability',navEudr:'EUDR Checklist',navData:'Import & Backup',sideNote:'Data is saved automatically in this browser. Back up JSON regularly.',dashTitle:'Farmer Dashboard',dashDesc:'Track farm profiles, polygons, CVA and coffee lots.',addFarm:'+ Add farmer',backup:'Backup JSON',farmCount:'Farmers',polygonDone:'Polygon recorded',lowRisk:'Low risk',lotsThisSeason:'Total lots',farmerList:'Farmer Directory',farmerListHelp:'Select a farmer to view the Farm Passport.',quickView:'Profile Overview',passportTitle:'Bilingual Farm Passport',passportDesc:'Data is saved automatically while editing.',printBtn:'Print / Export PDF',editFarm:'Edit information',deleteFarm:'Delete farmer',editData:'Edit Data',editHelp:'Edit directly and save automatically.',lotsTitle:'Lots & Traceability',lotsDesc:'Manage Harvest Lots and Processing Lots.',eudrTitle:'EUDR Checklist',eudrDesc:'Internal readiness checklist for each farm.',eudrTableTitle:'Readiness Status',field:'Field',status:'Status',noteCol:'Note',dataTitle:'Import & Backup',dataDesc:'Import Excel data or restore from JSON.',farmPassport:'Farm Passport',farmInfo:'Farm Information',location:'Location',ecosystem:'Ecosystem & Farming Practices',trace:'Lot Traceability',eudrReady:'EUDR readiness',cupping:'Cupping & CVA',farmer:'Farmer',farmArea:'Farm Area',elevation:'Elevation',variety:'Variety',year:'Year managed',gps:'GPS Center',polygon:'GPS Polygon',shade:'Shade / Intercrop Trees',soil:'Soil Management',herbicide:'Herbicide',ripe:'Ripe Picking',process:'Process',deforestation:'Deforestation after 31 Dec 2020',risk:'Risk Level',verify:'Verification Notes',map:'Map / Farm Photo',mapHelp:'Can be replaced with polygon image or map',checkDef:'Deforestation check',polyRecorded:'Farm boundary',chainTrace:'Supply chain',publicReady:'Public profile',cvaScore:'CVA Score',cuppingDate:'Cupping Date',evaluator:'Evaluator',flavorNotes:'Primary Flavor Notes',cuppingNotes:'Cupping Notes'}};
 
@@ -141,38 +141,94 @@ async function getSignedInUser(){
   if(error)throw error;
   return data.user;
 }
+function farmFromRow(r){
+  return {farmId:r.farm_id||'',farmerId:r.farmer_id||'',farmer:r.farmer_name||'',village:r.village||'',province:r.province||'',area:r.area||'',altitude:r.altitude||'',variety:r.variety||'',year:r.managed_since||'',gps:r.gps_center||'',polygon:r.polygon||'',shade:r.shade_trees||'',soil:r.soil_management||'',herbicide:r.herbicide||'',ripe:r.ripe_picking||'',deforestation:r.deforestation_status||'',risk:r.risk_level||'',verify:r.verification_notes||'',cvaScore:r.cva_score==null?'':String(r.cva_score),cuppingDate:r.cupping_date||'',evaluator:r.evaluator||'',flavorNotes:r.flavor_notes||'',cuppingNotes:r.cupping_notes||''};
+}
+function farmToRow(f,userId){
+  const score=f.cvaScore===''||f.cvaScore==null?null:Number(f.cvaScore);
+  return {user_id:userId,farm_id:f.farmId,farmer_id:f.farmerId||null,farmer_name:f.farmer||f.farmId,village:f.village||null,province:f.province||null,area:f.area||null,altitude:f.altitude||null,variety:f.variety||null,managed_since:f.year||null,gps_center:f.gps||null,polygon:f.polygon||null,shade_trees:f.shade||null,soil_management:f.soil||null,herbicide:f.herbicide||null,ripe_picking:f.ripe||null,deforestation_status:f.deforestation||null,risk_level:f.risk||null,verification_notes:f.verify||null,cva_score:Number.isFinite(score)?score:null,cupping_date:f.cuppingDate||null,evaluator:f.evaluator||null,flavor_notes:f.flavorNotes||null,cupping_notes:f.cuppingNotes||null,updated_at:new Date().toISOString()};
+}
+async function loadLegacyBackup(userId){
+  const {data,error}=await supabaseClient.from('app_data').select('data').eq('user_id',userId).maybeSingle();
+  if(error)throw error;
+  return data?.data?normalizeDB(data.data):normalizeDB(emptyDB);
+}
 async function loadOnlineDatabase(){
   const user=await getSignedInUser();
   if(!user)throw new Error('User is not signed in.');
   setSyncStatus('Đang tải...');
-  const {data,error}=await supabaseClient.from('app_data').select('data').eq('user_id',user.id).maybeSingle();
-  if(error)throw error;
-  if(data?.data){
+  const {data:farmRows,error:farmError}=await supabaseClient.from('farms').select('*').eq('user_id',user.id).order('created_at');
+  if(farmError)throw farmError;
+  if(!farmRows?.length){
+    const legacy=await loadLegacyBackup(user.id);
+    if(legacy.farms.length||legacy.harvestLots.length||legacy.processingLots.length){
+      db=legacy;
+      await syncNormalizedDatabase(user.id,false);
+      setSyncStatus('Đã chuyển dữ liệu','ok');
+      return normalizeDB(legacy);
+    }
     setSyncStatus('Đã đồng bộ','ok');
-    return normalizeDB(data.data);
+    return normalizeDB(emptyDB);
   }
-  const empty=normalizeDB(emptyDB);
-  const {error:insertError}=await supabaseClient.from('app_data').insert({user_id:user.id,data:empty});
-  if(insertError)throw insertError;
-  setSyncStatus('Đã tạo dữ liệu','ok');
-  return empty;
+  const farmUuidToCode=Object.fromEntries(farmRows.map(r=>[r.id,r.farm_id]));
+  const farms=farmRows.map(farmFromRow);
+  const {data:harvestRows,error:harvestError}=await supabaseClient.from('harvest_lots').select('*').eq('user_id',user.id).order('created_at');
+  if(harvestError)throw harvestError;
+  const harvestUuidToCode=Object.fromEntries((harvestRows||[]).map(r=>[r.id,r.lot_id]));
+  const harvestLots=(harvestRows||[]).map(r=>({id:r.lot_id,farmId:farmUuidToCode[r.farm_id]||'',harvestDate:r.harvest_date||'',process:r.description||'',cherryKg:Number(r.cherry_kg||0),status:r.status||''}));
+  const {data:processingRows,error:processingError}=await supabaseClient.from('processing_lots').select('*').eq('user_id',user.id).order('created_at');
+  if(processingError)throw processingError;
+  let sourceRows=[];
+  const processingIds=(processingRows||[]).map(r=>r.id);
+  if(processingIds.length){
+    const {data,error}=await supabaseClient.from('processing_lot_sources').select('processing_lot_id,harvest_lot_id').in('processing_lot_id',processingIds);
+    if(error)throw error;
+    sourceRows=data||[];
+  }
+  const sourceMap={};
+  sourceRows.forEach(s=>{if(!sourceMap[s.processing_lot_id])sourceMap[s.processing_lot_id]=[];const code=harvestUuidToCode[s.harvest_lot_id];if(code)sourceMap[s.processing_lot_id].push(code)});
+  const processingLots=(processingRows||[]).map(r=>({id:r.lot_id,sourceLotIds:sourceMap[r.id]||[],process:r.process||'',inputKg:Number(r.input_kg||0),outputKg:Number(r.output_kg||0),status:r.status||''}));
+  setSyncStatus('Đã đồng bộ','ok');
+  return normalizeDB({farms,harvestLots,processingLots});
+}
+async function syncNormalizedDatabase(userId,writeBackup=true){
+  setSyncStatus('Đang đồng bộ...');
+  const farmPayload=db.farms.filter(f=>f.farmId).map(f=>farmToRow(f,userId));
+  if(farmPayload.length){const {error}=await supabaseClient.from('farms').upsert(farmPayload,{onConflict:'user_id,farm_id'});if(error)throw error}
+  const {data:storedFarms,error:farmReadError}=await supabaseClient.from('farms').select('id,farm_id').eq('user_id',userId);
+  if(farmReadError)throw farmReadError;
+  const farmMap=Object.fromEntries((storedFarms||[]).map(r=>[r.farm_id,r.id]));
+  const localFarmCodes=new Set(db.farms.map(f=>f.farmId));
+  const farmIdsToDelete=(storedFarms||[]).filter(r=>!localFarmCodes.has(r.farm_id)).map(r=>r.id);
+  if(farmIdsToDelete.length){const {error}=await supabaseClient.from('farms').delete().in('id',farmIdsToDelete);if(error)throw error}
+  const harvestPayload=db.harvestLots.filter(l=>l.id&&farmMap[l.farmId]).map(l=>({user_id:userId,lot_id:l.id,farm_id:farmMap[l.farmId],harvest_date:l.harvestDate||null,description:l.process||null,cherry_kg:Number(l.cherryKg||0),status:l.status||null,updated_at:new Date().toISOString()}));
+  if(harvestPayload.length){const {error}=await supabaseClient.from('harvest_lots').upsert(harvestPayload,{onConflict:'user_id,lot_id'});if(error)throw error}
+  const {data:storedHarvest,error:harvestReadError}=await supabaseClient.from('harvest_lots').select('id,lot_id').eq('user_id',userId);
+  if(harvestReadError)throw harvestReadError;
+  const harvestMap=Object.fromEntries((storedHarvest||[]).map(r=>[r.lot_id,r.id]));
+  const localHarvestCodes=new Set(db.harvestLots.map(l=>l.id));
+  const harvestIdsToDelete=(storedHarvest||[]).filter(r=>!localHarvestCodes.has(r.lot_id)).map(r=>r.id);
+  if(harvestIdsToDelete.length){const {error}=await supabaseClient.from('harvest_lots').delete().in('id',harvestIdsToDelete);if(error)throw error}
+  const processingPayload=db.processingLots.filter(l=>l.id).map(l=>({user_id:userId,lot_id:l.id,process:l.process||null,input_kg:Number(l.inputKg||0),output_kg:Number(l.outputKg||0),status:l.status||null,updated_at:new Date().toISOString()}));
+  if(processingPayload.length){const {error}=await supabaseClient.from('processing_lots').upsert(processingPayload,{onConflict:'user_id,lot_id'});if(error)throw error}
+  const {data:storedProcessing,error:processingReadError}=await supabaseClient.from('processing_lots').select('id,lot_id').eq('user_id',userId);
+  if(processingReadError)throw processingReadError;
+  const processingMap=Object.fromEntries((storedProcessing||[]).map(r=>[r.lot_id,r.id]));
+  const localProcessingCodes=new Set(db.processingLots.map(l=>l.id));
+  const processingIdsToDelete=(storedProcessing||[]).filter(r=>!localProcessingCodes.has(r.lot_id)).map(r=>r.id);
+  if(processingIdsToDelete.length){const {error}=await supabaseClient.from('processing_lots').delete().in('id',processingIdsToDelete);if(error)throw error}
+  const activeProcessingIds=Object.values(processingMap);
+  if(activeProcessingIds.length){const {error}=await supabaseClient.from('processing_lot_sources').delete().in('processing_lot_id',activeProcessingIds);if(error)throw error}
+  const sourcePayload=[];
+  db.processingLots.forEach(p=>{const processingId=processingMap[p.id];if(!processingId)return;(p.sourceLotIds||[]).forEach(code=>{const harvestId=harvestMap[code];if(harvestId)sourcePayload.push({processing_lot_id:processingId,harvest_lot_id:harvestId})})});
+  if(sourcePayload.length){const {error}=await supabaseClient.from('processing_lot_sources').insert(sourcePayload);if(error)throw error}
+  if(writeBackup){const {error}=await supabaseClient.from('app_data').upsert({user_id:userId,data:normalizeDB(db),updated_at:new Date().toISOString()},{onConflict:'user_id'});if(error)throw error}
+  setSyncStatus('Đã đồng bộ','ok');
 }
 async function saveOnlineDatabase(){
   if(!isOnlineReady)return;
-  try{
-    const user=await getSignedInUser();
-    if(!user)return;
-    setSyncStatus('Đang đồng bộ...');
-    const {error}=await supabaseClient.from('app_data').upsert(
-      {user_id:user.id,data:normalizeDB(db),updated_at:new Date().toISOString()},
-      {onConflict:'user_id'}
-    );
-    if(error)throw error;
-    setSyncStatus('Đã đồng bộ','ok');
-  }catch(err){
-    console.error(err);
-    setSyncStatus('Lỗi đồng bộ','error');
-  }
+  try{const user=await getSignedInUser();if(!user)return;await syncNormalizedDatabase(user.id,true)}
+  catch(err){console.error(err);setSyncStatus('Lỗi đồng bộ','error')}
 }
 function saveDB(){
   localStorage.setItem(STORE,JSON.stringify(db));
@@ -220,9 +276,8 @@ async function signIn(){
   errorBox.textContent='';
   if(!email||!password){errorBox.textContent='Vui lòng nhập email và mật khẩu.';return}
   try{
-    const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
+    const {error}=await supabaseClient.auth.signInWithPassword({email,password});
     if(error)throw error;
-    await showAuthenticatedApp(data.user);
   }catch(err){
     console.error(err);
     errorBox.textContent=err.message||'Không thể đăng nhập.';
@@ -241,27 +296,39 @@ async function signOut(){
     document.getElementById('loginPassword').value='';
     document.getElementById('currentUserEmail').textContent='—';
     isOnlineReady=false;
+    activeUserId='';
+    appStartPromise=null;
     setSyncStatus('Chưa đồng bộ');
   }
 }
 
 async function showAuthenticatedApp(user){
-  document.getElementById('loginScreen').classList.add('hidden');
-  document.getElementById('mainApp').classList.remove('hidden');
-  document.getElementById('currentUserEmail').textContent=user?.email||'Signed in';
+  if(!user)return;
+  if(appStartPromise&&activeUserId===user.id)return appStartPromise;
+  activeUserId=user.id;
+  appStartPromise=(async()=>{
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('mainApp').classList.remove('hidden');
+    document.getElementById('currentUserEmail').textContent=user.email||'Signed in';
+    try{
+      db=await loadOnlineDatabase();
+      isOnlineReady=true;
+      localStorage.setItem(STORE,JSON.stringify(db));
+    }catch(err){
+      console.error(err);
+      db=loadLocalBackup();
+      isOnlineReady=false;
+      setSyncStatus('Dùng bản cục bộ','error');
+      alert('Không thể tải dữ liệu online. App đang dùng bản lưu cục bộ: '+(err.message||err));
+    }
+    currentFarmId=db.farms[0]?.farmId||'';
+    setLang('vi');
+  })();
   try{
-    db=await loadOnlineDatabase();
-    isOnlineReady=true;
-    localStorage.setItem(STORE,JSON.stringify(db));
-  }catch(err){
-    console.error(err);
-    db=loadLocalBackup();
-    isOnlineReady=false;
-    setSyncStatus('Dùng bản cục bộ','error');
-    alert('Không thể tải dữ liệu online. App đang dùng bản lưu cục bộ: '+(err.message||err));
+    await appStartPromise;
+  }finally{
+    appStartPromise=null;
   }
-  currentFarmId=db.farms[0]?.farmId||'';
-  setLang('vi');
 }
 
 async function initializeAuth(){
