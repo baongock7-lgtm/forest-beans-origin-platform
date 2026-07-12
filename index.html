@@ -459,8 +459,23 @@ function renderPassports(){
 }
 function renderStats(){document.getElementById('statFarms').textContent=db.farms.length;document.getElementById('statPolygon').textContent=`${db.farms.filter(isPolygonRecorded).length}/${db.farms.length}`;document.getElementById('statRisk').textContent=db.farms.filter(f=>f.risk==='Low').length;document.getElementById('statLots').textContent=db.harvestLots.length+db.processingLots.length}
 function renderLots(){document.getElementById('harvestRows').innerHTML=db.harvestLots.map(l=>`<tr><td><b>${esc(l.id)}</b></td><td>${esc(l.farmId)}</td><td>${esc(l.harvestDate)}</td><td>${esc(l.process)}</td><td>${esc(l.cherryKg)}</td><td>${esc(l.status)}</td><td><button class="btn ghost small" onclick="openHarvestModal('${esc(l.id)}')">Edit</button> <button class="btn bad small" onclick="deleteHarvest('${esc(l.id)}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="7" class="empty">No harvest lots</td></tr>';document.getElementById('processingRows').innerHTML=db.processingLots.map(l=>`<tr><td><b>${esc(l.id)}</b></td><td>${esc((l.sourceLotIds||[]).join(', '))}</td><td>${esc(l.process)}</td><td>${esc(l.inputKg)}</td><td>${esc(l.outputKg)}</td><td>${esc(l.status)}</td><td><button class="btn ghost small" onclick="openProcessingModal('${esc(l.id)}')">Edit</button> <button class="btn bad small" onclick="deleteProcessing('${esc(l.id)}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="7" class="empty">No processing lots</td></tr>'}
+function parseAreaHa(value){
+  const raw=String(value||'').trim().toLowerCase().replace(',','.');
+  if(!raw)return null;
+  const match=raw.match(/-?\d+(?:\.\d+)?/);
+  if(!match)return null;
+  let number=Number(match[0]);
+  if(!Number.isFinite(number))return null;
+  if(/\bm2\b|m²|square meter|square metre/.test(raw))number=number/10000;
+  return number;
+}
 function deriveEudrAssessment(f){
+  const areaHa=parseAreaHa(f.area);
+  const areaKnown=areaHa!==null;
   const polygonOk=isPolygonRecorded(f);
+  const gpsOk=!!String(f.gps||'').trim();
+  const geolocationOk=areaKnown ? (areaHa>4 ? polygonOk : gpsOk) : false;
+  const geolocationRequirement=!areaKnown?'Confirm farm area':areaHa>4?'Polygon required':'GPS point required';
   const d=String(f.deforestation||'').toLowerCase();
   const deforestationOk=/^no$|no evidence|không/.test(d);
   const traceabilityOk=db.harvestLots.some(l=>l.farmId===f.farmId);
@@ -468,11 +483,13 @@ function deriveEudrAssessment(f){
   const incompleteLots=db.harvestLots.filter(l=>l.farmId===f.farmId).some(l=>!l.id||!l.harvestDate);
   const supplyRisk=traceabilityOk&&!incompleteLots?'Low':traceabilityOk?'Medium':'High';
   const countryRisk=String(f.risk||'').toLowerCase()==='high'?'High':String(f.risk||'').toLowerCase()==='medium'?'Standard':'Low';
-  return {polygonOk,deforestationOk,traceabilityOk,legalEvidenceOk,incompleteLots,supplyRisk,countryRisk};
+  return {areaHa,areaKnown,polygonOk,gpsOk,geolocationOk,geolocationRequirement,deforestationOk,traceabilityOk,legalEvidenceOk,incompleteLots,supplyRisk,countryRisk};
 }
 function defaultEudrActions(f){
   const a=deriveEudrAssessment(f),items=[];
-  if(!a.polygonOk)items.push({key:'polygon',title:'Verify farm polygon',detail:'Collect and verify the production plot polygon.'});
+  if(!a.areaKnown)items.push({key:'area',title:'Confirm farm area',detail:'Record the farm area in hectares to determine whether a GPS point or polygon is required.'});
+  else if(a.areaHa>4&&!a.polygonOk)items.push({key:'polygon',title:'Verify farm polygon',detail:'This production plot is over 4 ha. Collect and verify the full production plot polygon.'});
+  else if(a.areaHa<=4&&!a.gpsOk)items.push({key:'gps-point',title:'Record GPS point',detail:'This production plot is 4 ha or less. Record at least one valid latitude/longitude point.'});
   if(!a.deforestationOk)items.push({key:'deforestation',title:'Review deforestation evidence',detail:'Confirm no deforestation after 31 Dec 2020 using appropriate evidence.'});
   if(!a.legalEvidenceOk)items.push({key:'legality',title:'Upload legality evidence',detail:'Add land-use, producer or other applicable legal evidence.'});
   if(!a.traceabilityOk)items.push({key:'traceability',title:'Complete harvest traceability',detail:'Create at least one harvest lot linked to this farm.'});
@@ -494,9 +511,11 @@ function renderEudr(){
   ensureEudrActions(f);
   const a=deriveEudrAssessment(f);
   const open=f.eudrActions.filter(x=>x.status!=='Resolved');
-  const overall=(!a.polygonOk||!a.deforestationOk)?'Non-negligible':open.length?'Review required':'Negligible';
+  const overall=(!a.geolocationOk||!a.deforestationOk)?'Non-negligible':open.length?'Review required':'Negligible';
   const rows=[
-    ['Polygon verified',a.polygonOk?'Yes':'No',a.polygonOk?'good':'bad'],
+    ['Farm area',a.areaKnown?`${a.areaHa.toFixed(2)} ha`:'Unknown',a.areaKnown?'good':'warn'],
+    ['Geolocation requirement',a.geolocationRequirement,a.geolocationOk?'good':'warn'],
+    [a.areaKnown&&a.areaHa>4?'Polygon verified':'GPS point recorded',a.geolocationOk?'Yes':'No',a.geolocationOk?'good':'bad'],
     ['Deforestation after 31 Dec 2020',a.deforestationOk?'No evidence identified':'Review required',a.deforestationOk?'good':'bad'],
     ['Country / source risk',a.countryRisk,a.countryRisk==='High'?'bad':a.countryRisk==='Standard'?'warn':'good'],
     ['Supply chain complexity',a.supplyRisk,a.supplyRisk==='High'?'bad':a.supplyRisk==='Medium'?'warn':'good'],
@@ -512,7 +531,7 @@ function renderEudr(){
       ${x.notes?`<p class="note">${esc(x.notes)}</p>`:''}${x.evidenceData?`<a class="evidence-link" href="${x.evidenceData}" download="${esc(x.evidenceName||'evidence')}">Tải bằng chứng</a>`:''}
       <div class="actions" style="margin-top:10px"><button class="btn small" onclick="openEudrAction('${esc(x.id)}')">Xử lý</button>${x.key?'':`<button class="btn bad small" onclick="deleteEudrAction('${esc(x.id)}')">Xóa</button>`}</div>
     </div>`}).join(''):'<div class="empty">Không có hành động.</div>'}</div></div>
-  </div><div class="assessment-footer note">Hồ sơ nội bộ phục vụ chuẩn bị dữ liệu EUDR; không phải Due Diligence Statement hay chứng nhận của EU.</div>`;
+  </div><div class="assessment-footer note">Quy tắc geolocation trong app: vườn 4 ha trở xuống cần GPS point; vườn trên 4 ha cần polygon. Hồ sơ này phục vụ chuẩn bị dữ liệu nội bộ và không phải Due Diligence Statement hay chứng nhận của EU.</div>`;
 }
 function renderAll(){renderStats();renderFarmList();renderPassportSelector();renderEudrSelector();renderForm();renderPassports();renderLots();renderEudr()}
 
