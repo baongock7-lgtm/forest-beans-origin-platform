@@ -45,6 +45,30 @@
     .user-chip{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:999px;background:var(--paper);color:var(--green);font-size:12px;font-weight:800}
 
 
+
+    .risk-summary{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .risk-table{border:1px solid var(--line);border-radius:18px;padding:14px;background:#fffdf7}
+    .risk-row{display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px solid var(--line)}
+    .risk-row:last-child{border-bottom:0}
+    .risk-value{font-weight:900;text-align:right}
+    .risk-value.good{color:var(--ok)}.risk-value.warn{color:var(--warn)}.risk-value.bad{color:var(--bad)}
+    .actions-board{display:grid;gap:12px}
+    .eudr-action{border:1px solid var(--line);border-radius:18px;padding:14px;background:#fff}
+    .eudr-action.open{border-left:5px solid var(--bad)}
+    .eudr-action.in-progress{border-left:5px solid var(--warn)}
+    .eudr-action.resolved{border-left:5px solid var(--ok)}
+    .eudr-action-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+    .eudr-action-title{font-weight:900;color:var(--green);font-size:15px}
+    .status-badge{display:inline-block;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:900}
+    .status-badge.open{background:#f8dfda;color:var(--bad)}
+    .status-badge.in-progress{background:#fff0d5;color:var(--warn)}
+    .status-badge.resolved{background:#e6f3e8;color:var(--ok)}
+    .action-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+    .action-meta>div{padding:9px;background:#faf6ec;border-radius:12px;font-size:12px}
+    .evidence-link{display:inline-block;margin-top:8px;font-weight:800;color:var(--green);text-decoration:none}
+    .assessment-footer{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+    @media(max-width:760px){.risk-summary,.action-meta{grid-template-columns:1fr}}
+
     .public-page{min-height:100vh;background:var(--cream);padding:22px}
     .public-shell{max-width:1050px;margin:0 auto}
     .public-header{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:18px}
@@ -151,8 +175,20 @@
     </section>
 
     <section id="eudrTab" class="hidden">
-      <div class="top"><div><h2 data-i="eudrTitle">EUDR Checklist</h2><p data-i="eudrDesc">Checklist chuẩn bị nội bộ theo từng vườn.</p></div></div>
-      <section class="panel"><h3 data-i="eudrTableTitle">Tình trạng chuẩn bị</h3><div class="table-wrap"><table class="table"><thead><tr><th data-i="field">Hạng mục</th><th data-i="status">Trạng thái</th><th data-i="noteCol">Ghi chú</th></tr></thead><tbody id="eudrRows"></tbody></table></div></section>
+      <div class="top">
+        <div>
+          <h2>EUDR Risk Assessment</h2>
+          <p>Đánh giá rủi ro, theo dõi hành động xử lý và bằng chứng xác minh.</p>
+          <div class="passport-selector no-print" style="margin-top:14px">
+            <div>
+              <label for="eudrFarmSelect">Chọn nông hộ / Select farmer</label>
+              <select id="eudrFarmSelect" onchange="selectFarmFromEudr(this.value)"></select>
+            </div>
+          </div>
+        </div>
+        <div class="actions"><button class="btn secondary" onclick="openCustomEudrAction()">+ Thêm hành động</button></div>
+      </div>
+      <section class="panel"><div id="eudrContent" style="padding:18px"></div></section>
     </section>
 
     <section id="dataTab" class="hidden">
@@ -201,7 +237,7 @@ async function getSignedInUser(){
   return data.user;
 }
 function farmFromRow(r){
-  return {farmId:r.farm_id||'',farmerId:r.farmer_id||'',farmer:r.farmer_name||'',village:r.village||'',province:r.province||'',area:r.area||'',altitude:r.altitude||'',variety:r.variety||'',year:r.managed_since||'',gps:r.gps_center||'',polygon:r.polygon||'',shade:r.shade_trees||'',soil:r.soil_management||'',herbicide:r.herbicide||'',ripe:r.ripe_picking||'',deforestation:r.deforestation_status||'',risk:r.risk_level||'',verify:r.verification_notes||'',cvaScore:r.cva_score==null?'':String(r.cva_score),cuppingDate:r.cupping_date||'',evaluator:r.evaluator||'',flavorNotes:r.flavor_notes||'',cuppingNotes:r.cupping_notes||'',farmPhoto:''};
+  return {farmId:r.farm_id||'',farmerId:r.farmer_id||'',farmer:r.farmer_name||'',village:r.village||'',province:r.province||'',area:r.area||'',altitude:r.altitude||'',variety:r.variety||'',year:r.managed_since||'',gps:r.gps_center||'',polygon:r.polygon||'',shade:r.shade_trees||'',soil:r.soil_management||'',herbicide:r.herbicide||'',ripe:r.ripe_picking||'',deforestation:r.deforestation_status||'',risk:r.risk_level||'',verify:r.verification_notes||'',cvaScore:r.cva_score==null?'':String(r.cva_score),cuppingDate:r.cupping_date||'',evaluator:r.evaluator||'',flavorNotes:r.flavor_notes||'',cuppingNotes:r.cupping_notes||'',farmPhoto:'',eudrActions:Array.isArray(r.eudr_actions)?r.eudr_actions:[]};
 }
 
 function publicPassportPayload(f){
@@ -245,7 +281,7 @@ function publicPassportPayload(f){
 
 function farmToRow(f,userId){
   const score=f.cvaScore===''||f.cvaScore==null?null:Number(f.cvaScore);
-  return {user_id:userId,farm_id:f.farmId,farmer_id:f.farmerId||null,farmer_name:f.farmer||f.farmId,village:f.village||null,province:f.province||null,area:f.area||null,altitude:f.altitude||null,variety:f.variety||null,managed_since:f.year||null,gps_center:f.gps||null,polygon:f.polygon||null,shade_trees:f.shade||null,soil_management:f.soil||null,herbicide:f.herbicide||null,ripe_picking:f.ripe||null,deforestation_status:f.deforestation||null,risk_level:f.risk||null,verification_notes:f.verify||null,cva_score:Number.isFinite(score)?score:null,cupping_date:f.cuppingDate||null,evaluator:f.evaluator||null,flavor_notes:f.flavorNotes||null,cupping_notes:f.cuppingNotes||null,is_public:true,public_data:publicPassportPayload(f),updated_at:new Date().toISOString()};
+  return {user_id:userId,farm_id:f.farmId,farmer_id:f.farmerId||null,farmer_name:f.farmer||f.farmId,village:f.village||null,province:f.province||null,area:f.area||null,altitude:f.altitude||null,variety:f.variety||null,managed_since:f.year||null,gps_center:f.gps||null,polygon:f.polygon||null,shade_trees:f.shade||null,soil_management:f.soil||null,herbicide:f.herbicide||null,ripe_picking:f.ripe||null,deforestation_status:f.deforestation||null,risk_level:f.risk||null,verification_notes:f.verify||null,cva_score:Number.isFinite(score)?score:null,cupping_date:f.cuppingDate||null,evaluator:f.evaluator||null,flavor_notes:f.flavorNotes||null,cupping_notes:f.cuppingNotes||null,eudr_actions:Array.isArray(f.eudrActions)?f.eudrActions:[],is_public:true,public_data:publicPassportPayload(f),updated_at:new Date().toISOString()};
 }
 async function loadLegacyBackup(userId){
   const {data,error}=await supabaseClient.from('app_data').select('data').eq('user_id',userId).maybeSingle();
@@ -400,6 +436,14 @@ function renderPassportSelector(){
   select.disabled=false;
   select.innerHTML=db.farms.map(f=>`<option value="${esc(f.farmId)}" ${f.farmId===currentFarmId?'selected':''}>${esc(f.farmer||f.farmId)} · ${esc(f.farmId)}</option>`).join('');
 }
+function selectFarmFromEudr(id){currentFarmId=id;renderEudr();renderEudrSelector()}
+function renderEudrSelector(){
+  const select=document.getElementById('eudrFarmSelect');
+  if(!select)return;
+  if(!db.farms.length){select.innerHTML='<option value="">Chưa có nông hộ</option>';select.disabled=true;return}
+  select.disabled=false;
+  select.innerHTML=db.farms.map(f=>`<option value="${esc(f.farmId)}" ${f.farmId===currentFarmId?'selected':''}>${esc(f.farmer||f.farmId)} · ${esc(f.farmId)}</option>`).join('');
+}
 function isPolygonRecorded(f){return !!String(f?.polygon||'').trim()&&!/need|pending|chưa/i.test(String(f.polygon))}
 function farmCard(f){return `<button class="farm-item ${f.farmId===currentFarmId?'active':''}" onclick="selectFarm('${esc(f.farmId)}')"><b>${esc(f.farmer||f.farmId)}</b><span>${esc(f.farmId)} · ${esc(f.village||'')}</span><br><span>${tr('risk')}: ${esc(f.risk||'-')} · CVA ${esc(f.cvaScore||'-')}</span></button>`}
 function renderFarmList(){const q=(document.getElementById('farmSearch')?.value||'').toLowerCase(),risk=document.getElementById('riskFilter')?.value||'',poly=document.getElementById('polygonFilter')?.value||'';const rows=db.farms.filter(f=>{if(q&&!`${f.farmer} ${f.farmId} ${f.village}`.toLowerCase().includes(q))return false;if(risk&&f.risk!==risk)return false;if(poly==='recorded'&&!isPolygonRecorded(f))return false;if(poly==='pending'&&isPolygonRecorded(f))return false;return true});document.getElementById('farmList').innerHTML=rows.length?rows.map(farmCard).join(''):`<div class="empty">${lang==='vi'?'Chưa có nông hộ. Bấm “Thêm nông hộ” để bắt đầu.':'No farmers yet. Click “Add farmer” to begin.'}</div>`}
@@ -415,13 +459,92 @@ function renderPassports(){
 }
 function renderStats(){document.getElementById('statFarms').textContent=db.farms.length;document.getElementById('statPolygon').textContent=`${db.farms.filter(isPolygonRecorded).length}/${db.farms.length}`;document.getElementById('statRisk').textContent=db.farms.filter(f=>f.risk==='Low').length;document.getElementById('statLots').textContent=db.harvestLots.length+db.processingLots.length}
 function renderLots(){document.getElementById('harvestRows').innerHTML=db.harvestLots.map(l=>`<tr><td><b>${esc(l.id)}</b></td><td>${esc(l.farmId)}</td><td>${esc(l.harvestDate)}</td><td>${esc(l.process)}</td><td>${esc(l.cherryKg)}</td><td>${esc(l.status)}</td><td><button class="btn ghost small" onclick="openHarvestModal('${esc(l.id)}')">Edit</button> <button class="btn bad small" onclick="deleteHarvest('${esc(l.id)}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="7" class="empty">No harvest lots</td></tr>';document.getElementById('processingRows').innerHTML=db.processingLots.map(l=>`<tr><td><b>${esc(l.id)}</b></td><td>${esc((l.sourceLotIds||[]).join(', '))}</td><td>${esc(l.process)}</td><td>${esc(l.inputKg)}</td><td>${esc(l.outputKg)}</td><td>${esc(l.status)}</td><td><button class="btn ghost small" onclick="openProcessingModal('${esc(l.id)}')">Edit</button> <button class="btn bad small" onclick="deleteProcessing('${esc(l.id)}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="7" class="empty">No processing lots</td></tr>'}
-function renderEudr(){const f=currentFarm();document.getElementById('eudrRows').innerHTML=f?[['GPS Polygon',isPolygonRecorded(f)?'Recorded':'Pending',f.polygon||''],['Deforestation screening',f.deforestation||'Pending',f.verify||''],['Supply chain traceability',db.harvestLots.some(l=>l.farmId===f.farmId)?'Linked':'Pending',`${f.farmId} → ${db.harvestLots.filter(l=>l.farmId===f.farmId).map(l=>l.id).join(', ')||'-'}`],['Cupping & CVA',f.cvaScore?'Recorded':'Pending',`${f.cvaScore||'-'} · ${f.cuppingDate||'-'}`]].map(r=>`<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td></tr>`).join(''):'<tr><td colspan="3" class="empty">No farm selected</td></tr>'}
-function renderAll(){renderStats();renderFarmList();renderPassportSelector();renderForm();renderPassports();renderLots();renderEudr()}
+function deriveEudrAssessment(f){
+  const polygonOk=isPolygonRecorded(f);
+  const d=String(f.deforestation||'').toLowerCase();
+  const deforestationOk=/^no$|no evidence|không/.test(d);
+  const traceabilityOk=db.harvestLots.some(l=>l.farmId===f.farmId);
+  const legalEvidenceOk=!!String(f.verify||'').trim();
+  const incompleteLots=db.harvestLots.filter(l=>l.farmId===f.farmId).some(l=>!l.id||!l.harvestDate);
+  const supplyRisk=traceabilityOk&&!incompleteLots?'Low':traceabilityOk?'Medium':'High';
+  const countryRisk=String(f.risk||'').toLowerCase()==='high'?'High':String(f.risk||'').toLowerCase()==='medium'?'Standard':'Low';
+  return {polygonOk,deforestationOk,traceabilityOk,legalEvidenceOk,incompleteLots,supplyRisk,countryRisk};
+}
+function defaultEudrActions(f){
+  const a=deriveEudrAssessment(f),items=[];
+  if(!a.polygonOk)items.push({key:'polygon',title:'Verify farm polygon',detail:'Collect and verify the production plot polygon.'});
+  if(!a.deforestationOk)items.push({key:'deforestation',title:'Review deforestation evidence',detail:'Confirm no deforestation after 31 Dec 2020 using appropriate evidence.'});
+  if(!a.legalEvidenceOk)items.push({key:'legality',title:'Upload legality evidence',detail:'Add land-use, producer or other applicable legal evidence.'});
+  if(!a.traceabilityOk)items.push({key:'traceability',title:'Complete harvest traceability',detail:'Create at least one harvest lot linked to this farm.'});
+  if(a.incompleteLots)items.push({key:'lot-gaps',title:'Review traceability gaps',detail:'Complete missing lot IDs or harvest dates.'});
+  return items;
+}
+function ensureEudrActions(f){
+  if(!Array.isArray(f.eudrActions))f.eudrActions=[];
+  const keys=new Set(f.eudrActions.map(x=>x.key).filter(Boolean));
+  defaultEudrActions(f).forEach(item=>{
+    if(!keys.has(item.key))f.eudrActions.push({id:`EA-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,key:item.key,title:item.title,detail:item.detail,status:'Open',verifier:'',verifiedDate:'',notes:'',evidenceName:'',evidenceData:''});
+  });
+}
+function actionStatusClass(v){return v==='Resolved'?'resolved':v==='In progress'?'in-progress':'open'}
+function renderEudr(){
+  const f=currentFarm(),el=document.getElementById('eudrContent');
+  renderEudrSelector();
+  if(!f){el.innerHTML='<div class="empty">Chưa chọn nông hộ</div>';return}
+  ensureEudrActions(f);
+  const a=deriveEudrAssessment(f);
+  const open=f.eudrActions.filter(x=>x.status!=='Resolved');
+  const overall=(!a.polygonOk||!a.deforestationOk)?'Non-negligible':open.length?'Review required':'Negligible';
+  const rows=[
+    ['Polygon verified',a.polygonOk?'Yes':'No',a.polygonOk?'good':'bad'],
+    ['Deforestation after 31 Dec 2020',a.deforestationOk?'No evidence identified':'Review required',a.deforestationOk?'good':'bad'],
+    ['Country / source risk',a.countryRisk,a.countryRisk==='High'?'bad':a.countryRisk==='Standard'?'warn':'good'],
+    ['Supply chain complexity',a.supplyRisk,a.supplyRisk==='High'?'bad':a.supplyRisk==='Medium'?'warn':'good'],
+    ['Traceability complete',a.traceabilityOk&&!a.incompleteLots?'Yes':'No',a.traceabilityOk&&!a.incompleteLots?'good':'bad'],
+    ['Legal evidence available',a.legalEvidenceOk?'Yes':'No',a.legalEvidenceOk?'good':'warn'],
+    ['Overall risk',overall,overall==='Negligible'?'good':overall==='Review required'?'warn':'bad']
+  ];
+  el.innerHTML=`<div class="risk-summary">
+    <div class="risk-table"><h3 style="padding:0 0 8px">EUDR Risk Assessment</h3>${rows.map(([k,v,c])=>`<div class="risk-row"><span>${esc(k)}</span><span class="risk-value ${c}">${esc(v)}</span></div>`).join('')}</div>
+    <div><h3 style="padding:0 0 8px">Required Actions</h3><div class="actions-board">${f.eudrActions.length?f.eudrActions.map(x=>{const cls=actionStatusClass(x.status);return `<div class="eudr-action ${cls}">
+      <div class="eudr-action-head"><div><div class="eudr-action-title">${esc(x.title)}</div><div class="note">${esc(x.detail||'')}</div></div><span class="status-badge ${cls}">${esc(x.status||'Open')}</span></div>
+      <div class="action-meta"><div><b>Verifier</b><br>${esc(x.verifier||'-')}</div><div><b>Date</b><br>${esc(x.verifiedDate||'-')}</div><div><b>Evidence</b><br>${esc(x.evidenceName||'-')}</div></div>
+      ${x.notes?`<p class="note">${esc(x.notes)}</p>`:''}${x.evidenceData?`<a class="evidence-link" href="${x.evidenceData}" download="${esc(x.evidenceName||'evidence')}">Tải bằng chứng</a>`:''}
+      <div class="actions" style="margin-top:10px"><button class="btn small" onclick="openEudrAction('${esc(x.id)}')">Xử lý</button>${x.key?'':`<button class="btn bad small" onclick="deleteEudrAction('${esc(x.id)}')">Xóa</button>`}</div>
+    </div>`}).join(''):'<div class="empty">Không có hành động.</div>'}</div></div>
+  </div><div class="assessment-footer note">Hồ sơ nội bộ phục vụ chuẩn bị dữ liệu EUDR; không phải Due Diligence Statement hay chứng nhận của EU.</div>`;
+}
+function renderAll(){renderStats();renderFarmList();renderPassportSelector();renderEudrSelector();renderForm();renderPassports();renderLots();renderEudr()}
 
-function modal(title,body,submit){document.getElementById('modalTitle').textContent=title;document.getElementById('modalBody').innerHTML=body;document.getElementById('modal').classList.add('open');document.getElementById('modalForm').onsubmit=e=>{e.preventDefault();const d=Object.fromEntries(new FormData(e.currentTarget).entries());const ok=submit(d);if(ok===false)return;saveDB();closeModal();renderAll()}}
+function openCustomEudrAction(){
+  const f=currentFarm();if(!f)return;
+  openEudrAction('',{id:`EA-${Date.now()}`,key:'',title:'',detail:'',status:'Open',verifier:'',verifiedDate:'',notes:'',evidenceName:'',evidenceData:''});
+}
+function fileToDataUrl(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(new Error('Không thể đọc tệp'));r.readAsDataURL(file)})}
+function openEudrAction(id='',draft=null){
+  const f=currentFarm();if(!f)return;
+  const x=draft||f.eudrActions.find(a=>a.id===id);if(!x)return;
+  const isNew=!id;
+  modal(isNew?'Thêm hành động EUDR':'Xử lý hành động EUDR',`
+    <label>Action title</label><input name="title" value="${esc(x.title||'')}" required>
+    <label>Description</label><textarea name="detail">${esc(x.detail||'')}</textarea>
+    <div class="row"><div><label>Status</label><select name="status"><option ${x.status==='Open'?'selected':''}>Open</option><option ${x.status==='In progress'?'selected':''}>In progress</option><option ${x.status==='Resolved'?'selected':''}>Resolved</option></select></div><div><label>Verification date</label><input name="verifiedDate" type="date" value="${esc(x.verifiedDate||'')}"></div></div>
+    <label>Verifier</label><input name="verifier" value="${esc(x.verifier||'')}">
+    <label>Notes</label><textarea name="notes">${esc(x.notes||'')}</textarea>
+    <label>Evidence file (PDF/image, max 2 MB)</label><input id="eudrEvidenceFile" type="file" accept=".pdf,image/*">
+    ${x.evidenceName?`<p class="note">Current: ${esc(x.evidenceName)}</p>`:''}
+  `,async d=>{
+    const file=document.getElementById('eudrEvidenceFile')?.files?.[0];
+    if(file){if(file.size>2*1024*1024){alert('Tệp quá lớn. Tối đa 2 MB.');return false}x.evidenceName=file.name;x.evidenceData=await fileToDataUrl(file)}
+    Object.assign(x,d);if(isNew)f.eudrActions.push(x);return true;
+  });
+}
+function deleteEudrAction(id){const f=currentFarm();if(!f||!confirm('Xóa hành động này?'))return;f.eudrActions=f.eudrActions.filter(x=>x.id!==id);saveDB();renderEudr()}
+
+function modal(title,body,submit){document.getElementById('modalTitle').textContent=title;document.getElementById('modalBody').innerHTML=body;document.getElementById('modal').classList.add('open');document.getElementById('modalForm').onsubmit=async e=>{e.preventDefault();const d=Object.fromEntries(new FormData(e.currentTarget).entries());const ok=await submit(d);if(ok===false)return;saveDB();closeModal();renderAll()}}
 function closeModal(){document.getElementById('modal').classList.remove('open')}
 const field=(n,l,v='',type='text')=>`<label>${l}</label><input name="${n}" type="${type}" value="${esc(v)}" required>`;
-function openFarmModal(id=''){const x=db.farms.find(f=>f.farmId===id)||{};modal(id?'Edit farm':'Add farm',`${field('farmId','Farm ID',x.farmId||'')}${field('farmerId','Farmer ID',x.farmerId||'')}${field('farmer','Farmer',x.farmer||'')}<div class="row">${field('village','Village / District',x.village||'')}${field('province','Province',x.province||'Lâm Đồng, Vietnam')}</div><div class="row">${field('area','Area',x.area||'')}${field('altitude','Altitude',x.altitude||'')}</div>${field('variety','Variety',x.variety||'Arabica Catimor')}<div class="row">${field('year','Year managed',x.year||'')}${field('risk','Risk',x.risk||'Medium')}</div><label>GPS Center</label><input name="gps" value="${esc(x.gps||'')}"><label>Polygon / GeoJSON</label><textarea name="polygon">${esc(x.polygon||'')}</textarea><label>Shade / Intercrop Trees</label><textarea name="shade">${esc(x.shade||'')}</textarea><label>Soil Management</label><textarea name="soil">${esc(x.soil||'')}</textarea><div class="row">${field('herbicide','Herbicide',x.herbicide||'')}${field('ripe','Ripe Picking',x.ripe||'')}</div><label>Deforestation screening</label><input name="deforestation" value="${esc(x.deforestation||'')}"><label>Verification notes</label><textarea name="verify">${esc(x.verify||'')}</textarea><div class="row">${field('cvaScore','CVA Score',x.cvaScore||'','number')}${field('cuppingDate','Cupping Date',x.cuppingDate||'','date')}</div>${field('evaluator','Evaluator',x.evaluator||'')}<label>Flavor notes</label><textarea name="flavorNotes">${esc(x.flavorNotes||'')}</textarea><label>Cupping notes</label><textarea name="cuppingNotes">${esc(x.cuppingNotes||'')}</textarea>`,d=>{if(db.farms.some(f=>f.farmId===d.farmId&&f!==x)){alert('Farm ID already exists');return false}if(id){const old=id,photo=x.farmPhoto||'';Object.assign(x,d);x.farmPhoto=photo;if(old!==d.farmId)db.harvestLots.filter(l=>l.farmId===old).forEach(l=>l.farmId=d.farmId)}else{d.farmPhoto='';db.farms.push(d)}currentFarmId=d.farmId})}
+function openFarmModal(id=''){const x=db.farms.find(f=>f.farmId===id)||{};modal(id?'Edit farm':'Add farm',`${field('farmId','Farm ID',x.farmId||'')}${field('farmerId','Farmer ID',x.farmerId||'')}${field('farmer','Farmer',x.farmer||'')}<div class="row">${field('village','Village / District',x.village||'')}${field('province','Province',x.province||'Lâm Đồng, Vietnam')}</div><div class="row">${field('area','Area',x.area||'')}${field('altitude','Altitude',x.altitude||'')}</div>${field('variety','Variety',x.variety||'Arabica Catimor')}<div class="row">${field('year','Year managed',x.year||'')}${field('risk','Risk',x.risk||'Medium')}</div><label>GPS Center</label><input name="gps" value="${esc(x.gps||'')}"><label>Polygon / GeoJSON</label><textarea name="polygon">${esc(x.polygon||'')}</textarea><label>Shade / Intercrop Trees</label><textarea name="shade">${esc(x.shade||'')}</textarea><label>Soil Management</label><textarea name="soil">${esc(x.soil||'')}</textarea><div class="row">${field('herbicide','Herbicide',x.herbicide||'')}${field('ripe','Ripe Picking',x.ripe||'')}</div><label>Deforestation screening</label><input name="deforestation" value="${esc(x.deforestation||'')}"><label>Verification notes</label><textarea name="verify">${esc(x.verify||'')}</textarea><div class="row">${field('cvaScore','CVA Score',x.cvaScore||'','number')}${field('cuppingDate','Cupping Date',x.cuppingDate||'','date')}</div>${field('evaluator','Evaluator',x.evaluator||'')}<label>Flavor notes</label><textarea name="flavorNotes">${esc(x.flavorNotes||'')}</textarea><label>Cupping notes</label><textarea name="cuppingNotes">${esc(x.cuppingNotes||'')}</textarea>`,d=>{if(db.farms.some(f=>f.farmId===d.farmId&&f!==x)){alert('Farm ID already exists');return false}if(id){const old=id,photo=x.farmPhoto||'';Object.assign(x,d);x.farmPhoto=photo;if(old!==d.farmId)db.harvestLots.filter(l=>l.farmId===old).forEach(l=>l.farmId=d.farmId)}else{d.farmPhoto='';d.eudrActions=[];db.farms.push(d)}currentFarmId=d.farmId})}
 function deleteCurrentFarm(){const f=currentFarm();if(!f)return;if(!confirm(`Delete ${f.farmer} (${f.farmId})? Linked harvest lots will also be deleted.`))return;const ids=db.harvestLots.filter(l=>l.farmId===f.farmId).map(l=>l.id);db.processingLots.forEach(p=>p.sourceLotIds=(p.sourceLotIds||[]).filter(id=>!ids.includes(id)));db.harvestLots=db.harvestLots.filter(l=>l.farmId!==f.farmId);db.farms=db.farms.filter(x=>x.farmId!==f.farmId);currentFarmId=db.farms[0]?.farmId||'';saveDB();renderAll()}
 function openHarvestModal(id=''){const x=db.harvestLots.find(l=>l.id===id)||{};if(!db.farms.length)return alert('Add a farm first');modal(id?'Edit Harvest Lot':'Add Harvest Lot',`${field('id','Harvest Lot ID',x.id||'')}<label>Farm</label><select name="farmId">${db.farms.map(f=>`<option value="${esc(f.farmId)}" ${x.farmId===f.farmId?'selected':''}>${esc(f.farmId)} · ${esc(f.farmer)}</option>`).join('')}</select><div class="row">${field('harvestDate','Harvest Date',x.harvestDate||'','date')}${field('process','Description',x.process||'Ripe cherry')}</div>${field('cherryKg','Cherry kg',x.cherryKg||0,'number')}${field('status','Status',x.status||'collected')}`,d=>{d.cherryKg=+d.cherryKg;if(db.harvestLots.some(l=>l.id===d.id&&l!==x)){alert('Lot ID exists');return false}if(id)Object.assign(x,d);else db.harvestLots.push(d)})}
 function deleteHarvest(id){if(!confirm(`Delete ${id}?`))return;db.processingLots.forEach(p=>p.sourceLotIds=(p.sourceLotIds||[]).filter(x=>x!==id));db.harvestLots=db.harvestLots.filter(l=>l.id!==id);saveDB();renderAll()}
@@ -524,7 +647,7 @@ document.getElementById('farmPhotoInput').addEventListener('change',e=>{
 function downloadFullJSON(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(db,null,2)],{type:'application/json'}));a.download=`forest-beans-origin-backup-${new Date().toISOString().slice(0,10)}.json`;a.click()}
 function restoreJSON(){const f=document.getElementById('jsonFile').files[0];if(!f)return alert('Select JSON');const r=new FileReader();r.onload=()=>{try{const x=JSON.parse(r.result);if(!x||!Array.isArray(x.farms))throw new Error('Invalid database');if(!confirm('Replace current database?'))return;db=normalizeDB(x);currentFarmId=db.farms[0]?.farmId||'';saveDB();renderAll()}catch(e){alert('Invalid JSON: '+e.message)}};r.readAsText(f)}
 function resetDatabase(){if(!confirm('Delete all local data?'))return;db=JSON.parse(JSON.stringify(emptyDB));currentFarmId='';saveDB();renderAll()}
-function importExcel(){if(typeof XLSX==='undefined')return alert('Excel library not loaded. Check your Internet connection.');const f=document.getElementById('excelFile').files[0];if(!f)return alert('Select Excel');const r=new FileReader();r.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'array'}),get=n=>XLSX.utils.sheet_to_json(wb.Sheets[n]||{}, {defval:''});const fields=['farmId','farmerId','farmer','village','province','area','altitude','variety','year','gps','polygon','shade','soil','herbicide','ripe','deforestation','risk','verify','cvaScore','cuppingDate','evaluator','flavorNotes','cuppingNotes'];get('Farmers').forEach(row=>{if(!row.farmId)return;const d={};fields.forEach(k=>d[k]=row[k]??'');const x=db.farms.find(f=>f.farmId===d.farmId);if(x){const photo=x.farmPhoto||'';Object.assign(x,d);x.farmPhoto=photo}else{d.farmPhoto='';db.farms.push(d)}});get('HarvestLots').forEach(row=>{if(!row.id)return;row.cherryKg=+row.cherryKg||0;const x=db.harvestLots.find(l=>l.id===row.id);if(x)Object.assign(x,row);else db.harvestLots.push(row)});get('ProcessingLots').forEach(row=>{if(!row.id)return;row.inputKg=+row.inputKg||0;row.outputKg=+row.outputKg||0;row.sourceLotIds=String(row.sourceLotIds||'').split(',').map(s=>s.trim()).filter(Boolean);const x=db.processingLots.find(l=>l.id===row.id);if(x)Object.assign(x,row);else db.processingLots.push(row)});currentFarmId=db.farms[0]?.farmId||currentFarmId;saveDB();renderAll();alert('Import completed')}catch(err){alert('Import error: '+err.message)}};r.readAsArrayBuffer(f)}
+function importExcel(){if(typeof XLSX==='undefined')return alert('Excel library not loaded. Check your Internet connection.');const f=document.getElementById('excelFile').files[0];if(!f)return alert('Select Excel');const r=new FileReader();r.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'array'}),get=n=>XLSX.utils.sheet_to_json(wb.Sheets[n]||{}, {defval:''});const fields=['farmId','farmerId','farmer','village','province','area','altitude','variety','year','gps','polygon','shade','soil','herbicide','ripe','deforestation','risk','verify','cvaScore','cuppingDate','evaluator','flavorNotes','cuppingNotes'];get('Farmers').forEach(row=>{if(!row.farmId)return;const d={};fields.forEach(k=>d[k]=row[k]??'');const x=db.farms.find(f=>f.farmId===d.farmId);if(x){const photo=x.farmPhoto||'';Object.assign(x,d);x.farmPhoto=photo}else{d.farmPhoto='';d.eudrActions=[];db.farms.push(d)}});get('HarvestLots').forEach(row=>{if(!row.id)return;row.cherryKg=+row.cherryKg||0;const x=db.harvestLots.find(l=>l.id===row.id);if(x)Object.assign(x,row);else db.harvestLots.push(row)});get('ProcessingLots').forEach(row=>{if(!row.id)return;row.inputKg=+row.inputKg||0;row.outputKg=+row.outputKg||0;row.sourceLotIds=String(row.sourceLotIds||'').split(',').map(s=>s.trim()).filter(Boolean);const x=db.processingLots.find(l=>l.id===row.id);if(x)Object.assign(x,row);else db.processingLots.push(row)});currentFarmId=db.farms[0]?.farmId||currentFarmId;saveDB();renderAll();alert('Import completed')}catch(err){alert('Import error: '+err.message)}};r.readAsArrayBuffer(f)}
 function downloadExcelTemplate(){if(typeof XLSX==='undefined')return alert('Excel library not loaded.');const rows={Farmers:[{farmId:'HR-DN-100',farmerId:'F-DN-100',farmer:'Farmer Name',village:'Đạ Nghịt, Lạc Dương',province:'Lâm Đồng, Vietnam',area:'1.00 ha',altitude:'1,550 m asl',variety:'Arabica Catimor',year:'2015',gps:'12.000000, 108.000000',polygon:'Polygon recorded / GeoJSON',shade:'Avocado, persimmon, banana and native shade trees',soil:'Composted manure, ground cover maintained',herbicide:'No herbicide',ripe:'95–100%',deforestation:'No evidence detected',risk:'Low',verify:'Satellite check and land-use history verified',cvaScore:84.50,cuppingDate:'2026-06-20',evaluator:'Internal QC',flavorNotes:'Caramel, citrus, stone fruit',cuppingNotes:'Clean cup, balanced sweetness and bright acidity'}],HarvestLots:[{id:'HL-100',farmId:'HR-DN-100',harvestDate:'2026-12-15',process:'Ripe cherry',cherryKg:1000,status:'collected'}],ProcessingLots:[{id:'PL-100',sourceLotIds:'HL-100',process:'Washed',inputKg:1000,outputKg:180,status:'review'}],Instructions:[{Sheet:'Farmers',Notes:'farmId is required. Contains all Farm Passport, GPS, practices, EUDR and CVA fields.'},{Sheet:'HarvestLots',Notes:'id and farmId required.'},{Sheet:'ProcessingLots',Notes:'Separate multiple sourceLotIds with commas.'}]};const wb=XLSX.utils.book_new();Object.entries(rows).forEach(([n,v])=>XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(v),n));XLSX.writeFile(wb,'forest-beans-farm-passport-import-template.xlsx')}
 
 
